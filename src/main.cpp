@@ -13,7 +13,7 @@ import vulkan_hpp;
 #include <iostream>
 #include <stdexcept>
 
-constexpr uint32_t WIDTH = 800;
+constexpr uint32_t WIDTH = 600;
 constexpr uint32_t HEIGHT = 600;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -102,7 +102,7 @@ private:
   void initWindow() {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    // glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
     window = glfwCreateWindow(WIDTH, HEIGHT, "GVK", nullptr, nullptr);
     glfwSetWindowUserPointer(window, this);
@@ -700,7 +700,7 @@ private:
                                    .pImageIndices = &imageIndex};
     auto presentResult = queue.presentKHR(presentInfo);
     if ((result == vk::Result::eSuboptimalKHR) ||
-        (result == vk::Result::eErrorOutOfDateKHR)) {
+        (result == vk::Result::eErrorOutOfDateKHR) || framebufferResized) {
       framebufferResized = false;
       recreateSwapChain();
     } else {
