@@ -6,6 +6,7 @@ import vulkan_hpp;
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <GVK/buffer.hpp>
 #include <GVK/state.hpp>
 
 #include <cstdlib>
@@ -17,7 +18,28 @@ constexpr uint32_t WIDTH = 600;
 constexpr uint32_t HEIGHT = 600;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
-static std::vector<char> readFile(const std::string &filename) {
+const std::vector<GVK::BasicVertex> vertices = {
+    // center
+    {{0.0f,   0.0f},  {1.0f, 1.0f, 1.0f}},
+    // ring
+    {{0.0f,  -0.5f},  {1.0f, 0.0f, 0.0f}},   // red
+    {{0.433f, -0.25f},{1.0f, 0.5f, 0.0f}},   // orange
+    {{0.433f,  0.25f},{1.0f, 1.0f, 0.0f}},   // yellow
+    {{0.0f,   0.5f},  {0.0f, 1.0f, 0.0f}},   // green
+    {{-0.433f, 0.25f},{0.0f, 0.0f, 1.0f}},   // blue
+    {{-0.433f,-0.25f},{0.5f, 0.0f, 1.0f}},   // violet
+};
+
+const std::vector<uint16_t> indices = {
+    0, 1, 2,
+    0, 2, 3,
+    0, 3, 4,
+    0, 4, 5,
+    0, 5, 6,
+    0, 6, 1,
+};
+
+std::vector<char> readFile(const std::string &filename) {
   std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
   if (!file.is_open()) {
@@ -32,9 +54,12 @@ static std::vector<char> readFile(const std::string &filename) {
   return buffer;
 }
 
+
 void recordCommandBuffer(const vk::raii::CommandBuffer &commandBuffer,
                          const GVK::SwapChain &swapChain, uint32_t imageIndex,
-                         const vk::raii::Pipeline &graphicsPipeline) {
+                         const vk::raii::Pipeline &graphicsPipeline,
+                         const vk::raii::Buffer &vertexBuffer,
+                         const vk::raii::Buffer &indexBuffer) {
   commandBuffer.begin({});
   GVK::transition_image_layout(
       commandBuffer, swapChain.images[imageIndex], vk::ImageLayout::eUndefined,
@@ -62,6 +87,8 @@ void recordCommandBuffer(const vk::raii::CommandBuffer &commandBuffer,
   commandBuffer.beginRendering(renderingInfo);
   commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
                              *graphicsPipeline);
+  commandBuffer.bindVertexBuffers(0, *vertexBuffer, {0});
+  commandBuffer.bindIndexBuffer(*indexBuffer, 0, vk::IndexType::eUint16);
   commandBuffer.setViewport(
       0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChain.extent.width),
                       static_cast<float>(swapChain.extent.height), 0.0f, 1.0f));
@@ -69,7 +96,7 @@ void recordCommandBuffer(const vk::raii::CommandBuffer &commandBuffer,
 
   // Actual drawing code
 
-  commandBuffer.draw(3, 1, 0, 0);
+  commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
   commandBuffer.endRendering();
   // After rendering, transition the swapchain image to
@@ -86,7 +113,9 @@ void recordCommandBuffer(const vk::raii::CommandBuffer &commandBuffer,
 }
 
 void drawFrame(GVK::State &state, const vk::raii::Pipeline &graphicsPipeline,
-               GVK::Window &window, uint32_t frameIndex) {
+               const vk::raii::Buffer &vertexBuffer,
+               const vk::raii::Buffer &indexBuffer, GVK::Window &window,
+               uint32_t frameIndex) {
   auto fenceResult = state.device.waitForFences(
       *state.inFlightFences[frameIndex], vk::True, UINT64_MAX);
   if (fenceResult != vk::Result::eSuccess) {
@@ -109,7 +138,7 @@ void drawFrame(GVK::State &state, const vk::raii::Pipeline &graphicsPipeline,
   state.device.resetFences(*state.inFlightFences[frameIndex]);
   state.commandBuffers[frameIndex].reset();
   recordCommandBuffer(state.commandBuffers[frameIndex], state.swapChain,
-                      imageIndex, graphicsPipeline);
+                      imageIndex, graphicsPipeline, vertexBuffer, indexBuffer);
 
   vk::PipelineStageFlags waitDestinationStageMask(
       vk::PipelineStageFlagBits::eColorAttachmentOutput);
@@ -143,12 +172,15 @@ void drawFrame(GVK::State &state, const vk::raii::Pipeline &graphicsPipeline,
 }
 
 void mainLoop(GVK::State &state, GVK::Window &window,
-              const vk::raii::Pipeline &graphicsPipeline) {
+              const vk::raii::Pipeline &graphicsPipeline,
+              const vk::raii::Buffer &vertexBuffer,
+              const vk::raii::Buffer &indexBuffer) {
   std::cout << "Starting main loop" << std::endl;
   uint32_t frameIndex = 0;
   while (!glfwWindowShouldClose(window.handle)) {
     glfwPollEvents();
-    drawFrame(state, graphicsPipeline, window, frameIndex);
+    drawFrame(state, graphicsPipeline, vertexBuffer, indexBuffer, window,
+              frameIndex);
     frameIndex = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
   }
   state.device.waitIdle();
@@ -173,8 +205,17 @@ int main() {
       vk::raii::Pipeline graphicsPipeline = GVK::createGraphicsPipeline(
           state.device,
           GVK::createShaderModule(state.device, readFile("shaders/slang.spv")),
-          pipelineLayout, state.swapChain);
-      mainLoop(state, window, graphicsPipeline);
+          GVK::BasicVertex::getDescription(), pipelineLayout, state.swapChain);
+
+      auto [vertexBuffer, vertexBufferMemory] = GVK::createBufferFromVec(
+          state.device, state.physicalDevice, state.commandPool, state.queue,
+          vertices, vk::BufferUsageFlagBits::eVertexBuffer);
+
+      auto [indexBuffer, indexBufferMemory] = GVK::createBufferFromVec(
+          state.device, state.physicalDevice, state.commandPool, state.queue,
+          indices, vk::BufferUsageFlagBits::eIndexBuffer);
+
+      mainLoop(state, window, graphicsPipeline, vertexBuffer, indexBuffer);
     }
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;

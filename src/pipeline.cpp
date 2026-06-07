@@ -1,5 +1,4 @@
 #include <GVK/pipeline.hpp>
-#include <vulkan/vulkan_raii.hpp>
 
 namespace GVK {
 [[nodiscard]] vk::raii::ShaderModule
@@ -21,6 +20,7 @@ vk::raii::PipelineLayout createPipelineLayout(const vk::raii::Device &device) {
 vk::raii::Pipeline
 createGraphicsPipeline(const vk::raii::Device &device,
                        vk::raii::ShaderModule shaderModule,
+                       const VertexDescription& vertexDescription,
                        const vk::raii::PipelineLayout &pipelineLayout,
                        const SwapChain &swapChain) {
 
@@ -44,7 +44,13 @@ createGraphicsPipeline(const vk::raii::Device &device,
       .dynamicStateCount = static_cast<uint32_t>(dynamicStates.size()),
       .pDynamicStates = dynamicStates.data()};
 
-  vk::PipelineVertexInputStateCreateInfo vertexInputInfo;
+  vk::PipelineVertexInputStateCreateInfo vertexInputInfo{
+      .vertexBindingDescriptionCount = 1,
+      .pVertexBindingDescriptions = &vertexDescription.bindingDescription,
+      .vertexAttributeDescriptionCount =
+          static_cast<uint32_t>(vertexDescription.attributeDescriptions.size()),
+      .pVertexAttributeDescriptions =
+          vertexDescription.attributeDescriptions.data()};
 
   vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
       .topology = vk::PrimitiveTopology::eTriangleList};
