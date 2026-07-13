@@ -13,7 +13,7 @@ struct BasicVertex {
   glm::vec2 pos;
   glm::vec3 color;
 
-  static VertexDescription getDescription();
+  static VertexDescription getVertexDescription();
 };
 
 } // namespace GVK

@@ -21,9 +21,6 @@ struct State {
   vk::raii::Device device = nullptr;
   vk::raii::Queue queue = nullptr;
   GVK::SwapChain swapChain;
-  vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
-  vk::raii::PipelineLayout pipelineLayout = nullptr;
-  vk::raii::Pipeline graphicsPipeline = nullptr;
   vk::raii::DescriptorPool descriptorPool = nullptr;
   vk::raii::CommandPool commandPool = nullptr;
   std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
@@ -37,7 +34,7 @@ struct FrameState {
   vk::raii::DescriptorSet descriptorSet;
   vk::raii::Semaphore presentCompleteSemaphore;
   vk::raii::Fence inFlightFence;
-  GVK::BufferMapped& ubo;
+  GVK::BufferMapped ubo;
 };
 
 void recreateSwapChain(GVK::State &state, GLFWwindow *window);
@@ -45,7 +42,5 @@ void recreateSwapChain(GVK::State &state, GLFWwindow *window);
 std::vector<FrameState>
 createFrameStates(const State &state,
                   const vk::raii::DescriptorSetLayout &descriptorSetLayout,
-                  std::vector<GVK::BufferMapped> &uniformBuffers,
-                  uint32_t count);
-
+                  std::vector<GVK::BufferMapped> uniformBuffers);
 } // namespace GVK

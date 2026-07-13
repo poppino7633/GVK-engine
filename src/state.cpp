@@ -36,8 +36,9 @@ State::State(GLFWwindow *window,
 std::vector<FrameState>
 createFrameStates(const State &state,
                   const vk::raii::DescriptorSetLayout &descriptorSetLayout,
-                  std::vector<GVK::BufferMapped> &uniformBuffers,
-                  uint32_t count) {
+                  std::vector<GVK::BufferMapped> uniformBuffers) {
+
+  const uint32_t count = uniformBuffers.size();
   auto commandBuffers =
       GVK::createCommandBuffers(state.device, state.commandPool, count);
   auto descriptorSets = GVK::allocateDescriptorSets(
@@ -55,7 +56,7 @@ createFrameStates(const State &state,
         .descriptorSet = std::move(descriptorSets[i]),
         .presentCompleteSemaphore = std::move(presentCompleteSemaphores[i]),
         .inFlightFence = std::move(inFlightFences[i]),
-        .ubo = uniformBuffers[i]
+        .ubo = std::move(uniformBuffers[i])
     });
   }
 

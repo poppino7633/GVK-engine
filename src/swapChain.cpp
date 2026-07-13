@@ -83,7 +83,7 @@ SwapChain createSwapChain(const vk::raii::Device &device,
 
   if (oldSwapChain) {
     swapChainCreateInfo.oldSwapchain = *oldSwapChain->handle;
-    oldSwapChain->imageViews.clear();
+    oldSwapChain->images.clear();
   }
 
   auto handle = vk::raii::SwapchainKHR(device, swapChainCreateInfo);
@@ -94,7 +94,6 @@ SwapChain createSwapChain(const vk::raii::Device &device,
       .extent = swapChainExtent,
       .minImageCount = minImageCount,
       .surfaceFormat = swapChainSurfaceFormat,
-      .images = swapChainImages,
   };
 
   vk::ImageViewCreateInfo imageViewCreateInfo{
@@ -104,7 +103,8 @@ SwapChain createSwapChain(const vk::raii::Device &device,
 
   for (auto &image : swapChainImages) {
     imageViewCreateInfo.image = image;
-    swapChain.imageViews.emplace_back(device, imageViewCreateInfo);
+    vk::raii::ImageView imageView = {device, imageViewCreateInfo};
+    swapChain.images.emplace_back(SwapChainImage{std::move(imageView), image});
   }
   return swapChain;
 }

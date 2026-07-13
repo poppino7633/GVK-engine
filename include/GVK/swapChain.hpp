@@ -4,13 +4,17 @@
 
 namespace GVK {
 
+struct SwapChainImage {
+  vk::raii::ImageView imageView;
+  vk::Image image;
+};
+
 struct SwapChain {
   vk::raii::SwapchainKHR handle = nullptr;
   vk::Extent2D extent;
   uint32_t minImageCount;
   vk::SurfaceFormatKHR surfaceFormat;
-  std::vector<vk::Image> images;
-  std::vector<vk::raii::ImageView> imageViews;
+  std::vector<SwapChainImage> images;
 };
 
 SwapChain createSwapChain(const vk::raii::Device &device,
@@ -18,5 +22,4 @@ SwapChain createSwapChain(const vk::raii::Device &device,
                           GLFWwindow *window,
                           const vk::raii::SurfaceKHR &surface,
                           SwapChain *oldSwapChain = nullptr);
-
 } // namespace GVK

@@ -3,14 +3,25 @@
 #include <GVK/vertex.hpp>
 
 namespace GVK {
+
+struct PipelineFamily {
+  vk::raii::DescriptorSetLayout descriptorSetLayout;
+  vk::raii::PipelineLayout pipelineLayout;
+
+  std::vector<vk::raii::Pipeline> pipelines;
+};
+
 vk::raii::ShaderModule createShaderModule(const vk::raii::Device &device,
                                           const std::vector<char> &code);
 
-vk::raii::PipelineLayout createPipelineLayout(const vk::raii::Device &device, const vk::raii::DescriptorSetLayout &descriptorSetLayout);
+void addGraphicsPipeline(const vk::raii::Device &device,
+                         PipelineFamily &pipelineFamily,
+                         vk::raii::ShaderModule shaderModule,
+                         const VertexDescription &vertexDescription,
+                         const SwapChain &swapChain);
 
-vk::raii::Pipeline createGraphicsPipeline(
-    const vk::raii::Device &device, vk::raii::ShaderModule shaderModule,
-    const VertexDescription &VertexDescription,
-    const vk::raii::PipelineLayout &pipelineLayout, const SwapChain &swapChain);
+PipelineFamily createPipelineFamily(
+    const vk::raii::Device &device,
+    const std::vector<vk::DescriptorSetLayoutBinding> &bindings);
 
 } // namespace GVK

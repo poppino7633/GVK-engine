@@ -18,14 +18,14 @@ createDescriptorSetLayout(const vk::raii::Device &device,
   return vk::raii::DescriptorSetLayout(device, layoutInfo);
 }
 
-vk::raii::PipelineLayout createPipelineLayout(
-    const vk::raii::Device &device,
-    const vk::raii::DescriptorSetLayout &descriptorSetLayout) {
+vk::raii::PipelineLayout
+createPipelineLayout(const vk::raii::Device &device,
+                     const vk::raii::DescriptorSetLayout &descriptorSetLayout) {
 
-  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
-      .setLayoutCount = 1,
-      .pSetLayouts = &*descriptorSetLayout,
-      .pushConstantRangeCount = 0};
+  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 1,
+                                                  .pSetLayouts =
+                                                      &*descriptorSetLayout,
+                                                  .pushConstantRangeCount = 0};
 
   return vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 }
@@ -125,6 +125,33 @@ createGraphicsPipeline(const vk::raii::Device &device,
   return vk::raii::Pipeline(
       device, nullptr,
       pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
+}
+
+PipelineFamily createPipelineFamily(
+    const vk::raii::Device &device,
+    const std::vector<vk::DescriptorSetLayoutBinding> &bindings) {
+  vk::DescriptorSetLayoutCreateInfo layoutInfo{
+      .bindingCount = static_cast<uint32_t>(bindings.size()),
+      .pBindings = bindings.data()};
+
+  vk::raii::DescriptorSetLayout descriptorSetLayout{device, layoutInfo};
+  vk::raii::PipelineLayout pipelineLayout = createPipelineLayout(device, descriptorSetLayout);
+  
+  return {
+    .descriptorSetLayout = std::move(descriptorSetLayout),
+    .pipelineLayout = std::move(pipelineLayout),
+    .pipelines = {}
+  };
+}
+
+void addGraphicsPipeline(const vk::raii::Device &device,
+                         PipelineFamily &pipelineFamily,
+                         vk::raii::ShaderModule shaderModule,
+                         const VertexDescription &vertexDescription,
+                         const SwapChain &swapChain) {
+  pipelineFamily.pipelines.emplace_back(std::move(
+      createGraphicsPipeline(device, std::move(shaderModule), vertexDescription,
+                             pipelineFamily.pipelineLayout, swapChain)));
 }
 
 } // namespace GVK

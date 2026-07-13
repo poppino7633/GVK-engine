@@ -2,7 +2,7 @@
 
 namespace GVK {
 
-VertexDescription BasicVertex::getDescription() {
+VertexDescription BasicVertex::getVertexDescription() {
   return {{.binding = 0,
            .stride = sizeof(BasicVertex),
            .inputRate = vk::VertexInputRate::eVertex},

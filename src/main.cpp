@@ -1,4 +1,3 @@
-#include "GVK/descriptor.hpp"
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
 #include <vulkan/vulkan_raii.hpp>
 #else
@@ -7,7 +6,6 @@ import vulkan_hpp;
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include <GVK/buffer.hpp>
 #include <GVK/state.hpp>
 
 #include <chrono>
@@ -67,15 +65,16 @@ std::vector<char> readFile(const std::string &filename) {
 }
 
 void recordCommandBuffer(const GVK::FrameState &frameState,
-                         const GVK::SwapChain &swapChain, uint32_t imageIndex,
-                         const vk::raii::Pipeline &graphicsPipeline,
-                         const vk::raii::PipelineLayout &pipelineLayout,
+                         const GVK::SwapChainImage &swapChainImage,
+                         vk::Extent2D swapChainExtent,
+                         const GVK::PipelineFamily &pipelineFamily,
                          const vk::raii::Buffer &vertexBuffer,
                          const vk::raii::Buffer &indexBuffer) {
+  assert(pipelineFamily.pipelines.size() > 0);
   frameState.commandBuffer.begin({});
   GVK::transition_image_layout(
-      frameState.commandBuffer, swapChain.images[imageIndex], vk::ImageLayout::eUndefined,
-      vk::ImageLayout::eColorAttachmentOptimal,
+      frameState.commandBuffer, swapChainImage.image,
+      vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal,
       {}, // srcAccessMask (no need to wait for previous operations)
       vk::AccessFlagBits2::eColorAttachmentWrite,         // dstAccessMask
       vk::PipelineStageFlagBits2::eColorAttachmentOutput, // srcStage
@@ -84,41 +83,44 @@ void recordCommandBuffer(const GVK::FrameState &frameState,
 
   vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
   vk::RenderingAttachmentInfo attachmentInfo = {
-      .imageView = swapChain.imageViews[imageIndex],
+      .imageView = swapChainImage.imageView,
       .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
       .loadOp = vk::AttachmentLoadOp::eClear,
       .storeOp = vk::AttachmentStoreOp::eStore,
       .clearValue = clearColor};
 
   vk::RenderingInfo renderingInfo = {
-      .renderArea = {.offset = {0, 0}, .extent = swapChain.extent},
+      .renderArea = {.offset = {0, 0}, .extent = swapChainExtent},
       .layerCount = 1,
       .colorAttachmentCount = 1,
       .pColorAttachments = &attachmentInfo};
 
   frameState.commandBuffer.beginRendering(renderingInfo);
   frameState.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-                             *graphicsPipeline);
+                                        *pipelineFamily.pipelines[0]);
   frameState.commandBuffer.bindVertexBuffers(0, *vertexBuffer, {0});
-  frameState.commandBuffer.bindIndexBuffer(*indexBuffer, 0, vk::IndexType::eUint16);
+  frameState.commandBuffer.bindIndexBuffer(*indexBuffer, 0,
+                                           vk::IndexType::eUint16);
   frameState.commandBuffer.setViewport(
-      0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChain.extent.width),
-                      static_cast<float>(swapChain.extent.height), 0.0f, 1.0f));
-  frameState.commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), swapChain.extent));
+      0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width),
+                      static_cast<float>(swapChainExtent.height), 0.0f, 1.0f));
+  frameState.commandBuffer.setScissor(
+      0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
 
-
-
-  frameState.commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, *frameState.descriptorSet, nullptr);
+  frameState.commandBuffer.bindDescriptorSets(
+      vk::PipelineBindPoint::eGraphics, pipelineFamily.pipelineLayout, 0,
+      *frameState.descriptorSet, nullptr);
 
   // Actual drawing code
 
-  frameState.commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+  frameState.commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1,
+                                       0, 0, 0);
 
   frameState.commandBuffer.endRendering();
   // After rendering, transition the swapchain image to
   // vk::ImageLayout::ePresentSrcKHR
   GVK::transition_image_layout(
-      frameState.commandBuffer, swapChain.images[imageIndex],
+      frameState.commandBuffer, swapChainImage.image,
       vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR,
       vk::AccessFlagBits2::eColorAttachmentWrite,         // srcAccessMask
       {},                                                 // dstAccessMask
@@ -150,10 +152,8 @@ void updateMatricesUBO(GVK::BufferMapped &matricesBuffer,
   memcpy(matricesBuffer.ptr, &ubo, sizeof(ubo));
 }
 
-
 void drawFrame(GVK::State &state, GVK::FrameState &frameState,
-               const vk::raii::Pipeline &graphicsPipeline,
-               const vk::raii::PipelineLayout &pipelineLayout,
+               const GVK::PipelineFamily &pipelineFamily,
                const vk::raii::Buffer &vertexBuffer,
                const vk::raii::Buffer &indexBuffer, GVK::Window &window) {
   auto fenceResult = state.device.waitForFences(*frameState.inFlightFence,
@@ -176,8 +176,9 @@ void drawFrame(GVK::State &state, GVK::FrameState &frameState,
   // Only reset the fence if we are submitting work
   state.device.resetFences(*frameState.inFlightFence);
   frameState.commandBuffer.reset();
-  recordCommandBuffer(frameState, state.swapChain, imageIndex,
-                      graphicsPipeline, pipelineLayout, vertexBuffer, indexBuffer);
+  recordCommandBuffer(frameState, state.swapChain.images[imageIndex],
+                      state.swapChain.extent, pipelineFamily, vertexBuffer,
+                      indexBuffer);
 
   updateMatricesUBO(frameState.ubo, state);
 
@@ -213,22 +214,19 @@ void drawFrame(GVK::State &state, GVK::FrameState &frameState,
 }
 
 void mainLoop(GVK::State &state, std::vector<GVK::FrameState> &frameStates,
-              GVK::Window &window, const vk::raii::Pipeline &graphicsPipeline,
-              const vk::raii::PipelineLayout &pipelineLayout,
-
+              GVK::Window &window, const GVK::PipelineFamily &pipelineFamily,
               const vk::raii::Buffer &vertexBuffer,
               const vk::raii::Buffer &indexBuffer) {
   std::cout << "Starting main loop" << std::endl;
   uint32_t frameIndex = 0;
   while (!glfwWindowShouldClose(window.handle)) {
     glfwPollEvents();
-    drawFrame(state, frameStates[frameIndex], graphicsPipeline, pipelineLayout,
-              vertexBuffer, indexBuffer, window);
+    drawFrame(state, frameStates[frameIndex], pipelineFamily, vertexBuffer,
+              indexBuffer, window);
     frameIndex = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
   }
   state.device.waitIdle();
 }
-
 
 int main() {
   try {
@@ -245,16 +243,14 @@ int main() {
 
       std::vector<vk::DescriptorSetLayoutBinding> bindings = {
           Matrices::getBinding()};
-      auto descriptorSetLayout =
-          GVK::createDescriptorSetLayout(state.device, bindings);
 
-      vk::raii::PipelineLayout pipelineLayout =
-          GVK::createPipelineLayout(state.device, descriptorSetLayout);
+      GVK::PipelineFamily pipelineFamily =
+          GVK::createPipelineFamily(state.device, bindings);
 
-      vk::raii::Pipeline graphicsPipeline = GVK::createGraphicsPipeline(
-          state.device,
+      GVK::addGraphicsPipeline(
+          state.device, pipelineFamily,
           GVK::createShaderModule(state.device, readFile("shaders/slang.spv")),
-          GVK::BasicVertex::getDescription(), pipelineLayout, state.swapChain);
+          GVK::BasicVertex::getVertexDescription(), state.swapChain);
 
       auto [vertexBuffer, vertexBufferMemory] = GVK::createBufferFromVec(
           state.device, state.physicalDevice, state.commandPool, state.queue,
@@ -264,14 +260,13 @@ int main() {
           state.device, state.physicalDevice, state.commandPool, state.queue,
           indices, vk::BufferUsageFlagBits::eIndexBuffer);
 
-      auto uniformBuffers = GVK::createUniformBuffers<Matrices>(
-          state.device, state.physicalDevice, MAX_FRAMES_IN_FLIGHT);
-
       std::vector<GVK::FrameState> frameStates = GVK::createFrameStates(
-          state, descriptorSetLayout, uniformBuffers, MAX_FRAMES_IN_FLIGHT);
+          state, pipelineFamily.descriptorSetLayout,
+          GVK::createUniformBuffers<Matrices>(
+              state.device, state.physicalDevice, MAX_FRAMES_IN_FLIGHT));
 
-      mainLoop(state, frameStates, window, graphicsPipeline, pipelineLayout,
-               vertexBuffer, indexBuffer);
+      mainLoop(state, frameStates, window, pipelineFamily, vertexBuffer,
+               indexBuffer);
     }
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
