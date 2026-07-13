@@ -10,9 +10,22 @@ createShaderModule(const vk::raii::Device &device,
   return vk::raii::ShaderModule(device, createInfo);
 }
 
-vk::raii::PipelineLayout createPipelineLayout(const vk::raii::Device &device) {
-  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 0,
-                                                  .pushConstantRangeCount = 0};
+vk::raii::DescriptorSetLayout
+createDescriptorSetLayout(const vk::raii::Device &device,
+                          vk::DescriptorSetLayoutBinding binding) {
+  vk::DescriptorSetLayoutCreateInfo layoutInfo{.bindingCount = 1,
+                                               .pBindings = &binding};
+  return vk::raii::DescriptorSetLayout(device, layoutInfo);
+}
+
+vk::raii::PipelineLayout createPipelineLayout(
+    const vk::raii::Device &device,
+    const vk::raii::DescriptorSetLayout &descriptorSetLayout) {
+
+  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
+      .setLayoutCount = 1,
+      .pSetLayouts = &*descriptorSetLayout,
+      .pushConstantRangeCount = 0};
 
   return vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 }
@@ -20,8 +33,9 @@ vk::raii::PipelineLayout createPipelineLayout(const vk::raii::Device &device) {
 vk::raii::Pipeline
 createGraphicsPipeline(const vk::raii::Device &device,
                        vk::raii::ShaderModule shaderModule,
-                       const VertexDescription& vertexDescription,
+                       const VertexDescription &vertexDescription,
                        const vk::raii::PipelineLayout &pipelineLayout,
+
                        const SwapChain &swapChain) {
 
   vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
@@ -71,7 +85,7 @@ createGraphicsPipeline(const vk::raii::Device &device,
       .rasterizerDiscardEnable = vk::False,
       .polygonMode = vk::PolygonMode::eFill,
       .cullMode = vk::CullModeFlagBits::eBack,
-      .frontFace = vk::FrontFace::eClockwise,
+      .frontFace = vk::FrontFace::eCounterClockwise,
       .depthBiasEnable = vk::False,
       .lineWidth = 1.0f};
 

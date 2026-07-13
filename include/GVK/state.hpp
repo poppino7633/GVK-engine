@@ -3,6 +3,9 @@
 #include <GVK/surface.hpp>
 #include <GVK/sync.hpp>
 #include <GVK/window.hpp>
+#include <GVK/command.hpp>
+#include <GVK/descriptor.hpp>
+#include <GVK/buffer.hpp>
 #ifndef NDEBUG
 #include <GVK/debug.hpp>
 #endif
@@ -18,19 +21,31 @@ struct State {
   vk::raii::Device device = nullptr;
   vk::raii::Queue queue = nullptr;
   GVK::SwapChain swapChain;
+  vk::raii::DescriptorSetLayout descriptorSetLayout = nullptr;
   vk::raii::PipelineLayout pipelineLayout = nullptr;
   vk::raii::Pipeline graphicsPipeline = nullptr;
+  vk::raii::DescriptorPool descriptorPool = nullptr;
   vk::raii::CommandPool commandPool = nullptr;
-  std::vector<vk::raii::CommandBuffer> commandBuffers;
-  std::vector<vk::raii::Semaphore> presentCompleteSemaphores;
   std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
-  std::vector<vk::raii::Fence> inFlightFences;
 
   State(GLFWwindow *window, const std::vector<const char *> &validationLayers,
-        const std::vector<const char *> &deviceExtensions,
-        uint32_t maxFramesInFlight);
+        const std::vector<const char *> &deviceExtensions, uint32_t maxDescriptorCount);
+};
+
+struct FrameState {
+  vk::raii::CommandBuffer commandBuffer;
+  vk::raii::DescriptorSet descriptorSet;
+  vk::raii::Semaphore presentCompleteSemaphore;
+  vk::raii::Fence inFlightFence;
+  GVK::BufferMapped& ubo;
 };
 
 void recreateSwapChain(GVK::State &state, GLFWwindow *window);
+
+std::vector<FrameState>
+createFrameStates(const State &state,
+                  const vk::raii::DescriptorSetLayout &descriptorSetLayout,
+                  std::vector<GVK::BufferMapped> &uniformBuffers,
+                  uint32_t count);
 
 } // namespace GVK

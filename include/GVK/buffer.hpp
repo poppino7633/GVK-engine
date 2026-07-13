@@ -1,6 +1,15 @@
+#pragma once
 #include <GVK/device.hpp>
 
 namespace GVK {
+
+struct BufferMapped {
+  vk::raii::Buffer buffer;
+  vk::raii::DeviceMemory memory;
+  vk::DeviceSize bufferSize;
+
+  void *ptr;
+};
 
 std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
 createBuffer(const vk::raii::Device &device,
@@ -40,6 +49,27 @@ createBufferFromVec(const vk::raii::Device &device,
   GVK::copyBuffer(device, commandPool, queue, stagingBuffer, buffer,
                   bufferSize);
   return {std::move(buffer), std::move(bufferMemory)};
+}
+
+template <typename T>
+std::vector<BufferMapped>
+createUniformBuffers(const vk::raii::Device &device,
+                     const vk::raii::PhysicalDevice &physicalDevice,
+                     size_t count) {
+  std::vector<BufferMapped> uniformBuffers;
+  for (size_t i = 0; i < count; i++) {
+    vk::DeviceSize bufferSize = sizeof(T);
+    auto [buffer, bufferMem] =
+        createBuffer(device, physicalDevice, bufferSize,
+                     vk::BufferUsageFlagBits::eUniformBuffer,
+                     vk::MemoryPropertyFlagBits::eHostVisible |
+                         vk::MemoryPropertyFlagBits::eHostCoherent);
+    uniformBuffers.emplace_back(BufferMapped{
+        std::move(buffer), std::move(bufferMem), bufferSize, nullptr});
+    uniformBuffers.back().ptr =
+        uniformBuffers.back().memory.mapMemory(0, bufferSize);
+  }
+  return uniformBuffers;
 }
 
 } // namespace GVK

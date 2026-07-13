@@ -6,7 +6,7 @@ namespace GVK {
 vk::raii::ShaderModule createShaderModule(const vk::raii::Device &device,
                                           const std::vector<char> &code);
 
-vk::raii::PipelineLayout createPipelineLayout(const vk::raii::Device &device);
+vk::raii::PipelineLayout createPipelineLayout(const vk::raii::Device &device, const vk::raii::DescriptorSetLayout &descriptorSetLayout);
 
 vk::raii::Pipeline createGraphicsPipeline(
     const vk::raii::Device &device, vk::raii::ShaderModule shaderModule,
