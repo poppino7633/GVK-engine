@@ -16,7 +16,7 @@ createDevice(vk::raii::PhysicalDevice physicalDevice, uint32_t queueFamilyIndex,
                      vk::PhysicalDeviceVulkan13Features,
                      vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
       featureChain = {
-          {}, // vk::PhysicalDeviceFeatures2 (empty for now)
+          {.features = {.samplerAnisotropy = true}}, 
           {.shaderDrawParameters = true},
           {.synchronization2 = true,
            .dynamicRendering =

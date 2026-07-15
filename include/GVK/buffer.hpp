@@ -11,6 +11,8 @@ struct BufferMapped {
   void *ptr;
 };
 
+vk::DescriptorBufferInfo getBufferMappedInfo(const BufferMapped &buffer, vk::DeviceSize offset);
+
 std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
 createBuffer(const vk::raii::Device &device,
              const vk::raii::PhysicalDevice &physicalDevice,

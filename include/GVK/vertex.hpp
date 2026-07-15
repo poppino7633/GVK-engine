@@ -16,4 +16,12 @@ struct BasicVertex {
   static VertexDescription getVertexDescription();
 };
 
+struct TexVertex {
+  glm::vec2 pos;
+  glm::vec2 texCoords;
+
+  static VertexDescription getVertexDescription();
+};
+
+
 } // namespace GVK

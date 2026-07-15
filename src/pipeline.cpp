@@ -94,7 +94,13 @@ createGraphicsPipeline(const vk::raii::Device &device,
       .sampleShadingEnable = vk::False};
 
   vk::PipelineColorBlendAttachmentState colorBlendAttachment{
-      .blendEnable = vk::False,
+      .blendEnable = vk::True,
+      .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+      .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+      .colorBlendOp = vk::BlendOp::eAdd,
+      .srcAlphaBlendFactor = vk::BlendFactor::eOne,
+      .dstAlphaBlendFactor = vk::BlendFactor::eZero,
+      .alphaBlendOp = vk::BlendOp::eAdd,
       .colorWriteMask =
           vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
           vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
@@ -135,13 +141,12 @@ PipelineFamily createPipelineFamily(
       .pBindings = bindings.data()};
 
   vk::raii::DescriptorSetLayout descriptorSetLayout{device, layoutInfo};
-  vk::raii::PipelineLayout pipelineLayout = createPipelineLayout(device, descriptorSetLayout);
-  
-  return {
-    .descriptorSetLayout = std::move(descriptorSetLayout),
-    .pipelineLayout = std::move(pipelineLayout),
-    .pipelines = {}
-  };
+  vk::raii::PipelineLayout pipelineLayout =
+      createPipelineLayout(device, descriptorSetLayout);
+
+  return {.descriptorSetLayout = std::move(descriptorSetLayout),
+          .pipelineLayout = std::move(pipelineLayout),
+          .pipelines = {}};
 }
 
 void addGraphicsPipeline(const vk::raii::Device &device,

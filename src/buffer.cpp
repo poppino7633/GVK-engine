@@ -33,4 +33,9 @@ void copyBuffer(const vk::raii::Device &device,
   GVK::endSingleTimeCommands(queue, std::move(copyCommandBuffer));
 }
 
+vk::DescriptorBufferInfo getBufferMappedInfo(const BufferMapped &buffer, vk::DeviceSize offset){
+  return { .buffer = buffer.buffer, .offset = offset, .range = buffer.bufferSize };
+}
+
+
 } // namespace GVK

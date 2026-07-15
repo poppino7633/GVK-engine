@@ -47,19 +47,20 @@ bool isPhysicalDeviceSuitable(
             });
       });
 
-  auto requiredDeviceFeatures = physicalDevice.template getFeatures2<
+  auto features = physicalDevice.template getFeatures2<
       vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan11Features,
       vk::PhysicalDeviceVulkan13Features,
       vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>();
   bool supportsRequiredFeatures =
-      requiredDeviceFeatures.template get<vk::PhysicalDeviceVulkan11Features>()
+      features.template get<vk::PhysicalDeviceFeatures2>()
+          .features.samplerAnisotropy &&
+      features.template get<vk::PhysicalDeviceVulkan11Features>()
           .shaderDrawParameters &&
-      requiredDeviceFeatures.template get<vk::PhysicalDeviceVulkan13Features>()
+      features.template get<vk::PhysicalDeviceVulkan13Features>()
           .dynamicRendering &&
-      requiredDeviceFeatures.template get<vk::PhysicalDeviceVulkan13Features>()
+      features.template get<vk::PhysicalDeviceVulkan13Features>()
           .synchronization2 &&
-      requiredDeviceFeatures
-          .template get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>()
+      features.template get<vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>()
           .extendedDynamicState;
 
   return supportsRequiredExtensions && supportsRequiredFeatures;
@@ -95,7 +96,5 @@ uint32_t findMemoryType(const vk::raii::PhysicalDevice &physicalDevice,
   }
   throw std::runtime_error("Failed to find suitable memory type!");
 }
-
-
 
 } // namespace GVK

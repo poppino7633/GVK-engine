@@ -1,3 +1,4 @@
+#include "vulkan/vulkan.hpp"
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
 #include <vulkan/vulkan_raii.hpp>
 #else
@@ -7,7 +8,6 @@ import vulkan_hpp;
 #include <GLFW/glfw3.h>
 
 #include <GVK/state.hpp>
-#include <GVK/texture.hpp>
 
 #include <chrono>
 #include <cstdlib>
@@ -21,20 +21,12 @@ constexpr uint32_t WIDTH = 600;
 constexpr uint32_t HEIGHT = 600;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
-const std::vector<GVK::BasicVertex> vertices = {
-    // center
-    {{0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}},
-    // ring
-    {{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},     // red
-    {{0.433f, -0.25f}, {1.0f, 0.5f, 0.0f}},  // orange
-    {{0.433f, 0.25f}, {1.0f, 1.0f, 0.0f}},   // yellow
-    {{0.0f, 0.5f}, {0.0f, 1.0f, 0.0f}},      // green
-    {{-0.433f, 0.25f}, {0.0f, 0.0f, 1.0f}},  // blue
-    {{-0.433f, -0.25f}, {0.5f, 0.0f, 1.0f}}, // violet
-};
-
+const std::vector<GVK::TexVertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f}},
+                                              {{0.5f, -0.5f}, {0.0f, 0.0f}},
+                                              {{0.5f, 0.5f}, {0.0f, 1.0f}},
+                                              {{-0.5f, 0.5f}, {1.0f, 1.0f}}};
 const std::vector<uint16_t> indices = {
-    0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 6, 0, 6, 1,
+  0, 1, 2, 2, 3, 0
 };
 
 struct Matrices {
@@ -47,6 +39,10 @@ struct Matrices {
             .descriptorType = vk::DescriptorType::eUniformBuffer,
             .descriptorCount = 1,
             .stageFlags = vk::ShaderStageFlagBits::eVertex};
+  }
+  static vk::DescriptorPoolSize getPoolSize(uint32_t count) {
+    return {.type = vk::DescriptorType::eUniformBuffer,
+            .descriptorCount = count};
   }
 };
 
@@ -130,11 +126,12 @@ void updateMatricesUBO(GVK::BufferMapped &matricesBuffer,
                    currentTime - startTime)
                    .count();
   Matrices ubo{};
-  ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
+  ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+  ubo.model = glm::rotate(ubo.model, time * glm::radians(90.0f),
                           glm::vec3(0.0f, 0.0f, 1.0f));
-  ubo.view = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+  ubo.view = glm::lookAt(glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f),
                     glm::vec3(0.0f, 0.0f, 1.0f));
-  ubo.proj = glm::perspective(glm::radians(45.0f),
+  ubo.proj = glm::perspective(glm::radians(90.0f),
                               static_cast<float>(swapChainExtent.width) /
                                   static_cast<float>(swapChainExtent.height),
                               0.1f, 10.0f);
@@ -232,11 +229,15 @@ int main() {
         "VK_LAYER_KHRONOS_validation"};
 #endif
     {
+      std::vector<vk::DescriptorPoolSize> poolSizes = {
+          Matrices::getPoolSize(MAX_FRAMES_IN_FLIGHT),
+          GVK::Texture::getPoolSize(MAX_FRAMES_IN_FLIGHT)};
       GVK::State state(window.handle, validationLayers,
-                       {vk::KHRSwapchainExtensionName}, MAX_FRAMES_IN_FLIGHT);
+                       {vk::KHRSwapchainExtensionName}, poolSizes,
+                       MAX_FRAMES_IN_FLIGHT);
 
       std::vector<vk::DescriptorSetLayoutBinding> bindings = {
-          Matrices::getBinding()};
+          Matrices::getBinding(), GVK::Texture::getBinding()};
 
       GVK::PipelineFamily pipelineFamily =
           GVK::createPipelineFamily(state.device, bindings);
@@ -244,7 +245,7 @@ int main() {
       GVK::addGraphicsPipeline(
           state.device, pipelineFamily,
           GVK::createShaderModule(state.device, readFile("shaders/slang.spv")),
-          GVK::BasicVertex::getVertexDescription(), state.swapChain);
+          GVK::TexVertex::getVertexDescription(), state.swapChain);
 
       auto [vertexBuffer, vertexBufferMemory] = GVK::createBufferFromVec(
           state.device, state.physicalDevice, state.commandPool, state.queue,
@@ -254,14 +255,15 @@ int main() {
           state.device, state.physicalDevice, state.commandPool, state.queue,
           indices, vk::BufferUsageFlagBits::eIndexBuffer);
 
+      GVK::Texture texture =
+          GVK::createTexture(state.device, state.physicalDevice, state.queue,
+                             state.commandPool, "assets/textures/texture.jpg");
+
       std::vector<GVK::FrameState> frameStates = GVK::createFrameStates(
           state, pipelineFamily.descriptorSetLayout,
           GVK::createUniformBuffers<Matrices>(
-              state.device, state.physicalDevice, MAX_FRAMES_IN_FLIGHT));
-
-      GVK::Texture texture = GVK::createTexture(
-          state.device, state.physicalDevice, state.queue, state.commandPool,
-          "assets/textures/texture.jpg");
+              state.device, state.physicalDevice, MAX_FRAMES_IN_FLIGHT),
+          texture);
 
       mainLoop(state, frameStates, window, pipelineFamily, vertexBuffer,
                indexBuffer);

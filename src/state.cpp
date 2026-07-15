@@ -4,6 +4,7 @@ namespace GVK {
 State::State(GLFWwindow *window,
              const std::vector<const char *> &validationLayers,
              const std::vector<const char *> &deviceExtensions,
+             const std::vector<vk::DescriptorPoolSize> &descriptorPoolSizes,
              uint32_t maxDescriptorCount) {
   instance = GVK::createInstance(context, validationLayers,
                                  GVK::getRequiredInstanceExtensions());
@@ -26,24 +27,52 @@ State::State(GLFWwindow *window,
   queue = vk::raii::Queue(device, queueFamilyIndex, 0);
   swapChain = GVK::createSwapChain(device, physicalDevice, window, surface);
 
-  descriptorPool = GVK::createDescriptorPool(device, maxDescriptorCount);
+  descriptorPool = GVK::createDescriptorPool(device, descriptorPoolSizes,
+                                             maxDescriptorCount);
 
   commandPool = GVK::createCommandPool(device, queueFamilyIndex);
 }
 
+void updateDescriptorSets(
+    const vk::raii::Device &device,
+    const std::vector<vk::raii::DescriptorSet> &descriptorSets,
+    const std::vector<BufferMapped> &uniformBuffers) {}
+
 std::vector<FrameState>
 createFrameStates(const State &state,
                   const vk::raii::DescriptorSetLayout &descriptorSetLayout,
-                  std::vector<GVK::BufferMapped> uniformBuffers) {
+                  std::vector<BufferMapped> uniformBuffers,
+                  const Texture &texture) {
 
   const uint32_t count = uniformBuffers.size();
   auto commandBuffers =
-      GVK::createCommandBuffers(state.device, state.commandPool, count);
-  auto descriptorSets = GVK::allocateDescriptorSets(
+      createCommandBuffers(state.device, state.commandPool, count);
+  auto descriptorSets = allocateDescriptorSets(
       state.device, state.descriptorPool, count, descriptorSetLayout);
-  GVK::updateDescriptorSets(state.device, descriptorSets, uniformBuffers);
-  auto presentCompleteSemaphores = GVK::createSemaphores(state.device, count);
-  auto inFlightFences = GVK::createFences(state.device, count);
+
+  for (size_t i = 0; i < descriptorSets.size(); i++) {
+    vk::DescriptorBufferInfo bufferInfo =
+        getBufferMappedInfo(uniformBuffers[i], 0);
+    vk::DescriptorImageInfo imageInfo = getTextureImageInfo(texture);
+    std::array<vk::WriteDescriptorSet, 2> descriptorWrites{
+        {{.dstSet = descriptorSets[i],
+          .dstBinding = 0,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = vk::DescriptorType::eUniformBuffer,
+          .pBufferInfo = &bufferInfo},
+         {.dstSet = descriptorSets[i],
+          .dstBinding = 1,
+          .dstArrayElement = 0,
+          .descriptorCount = 1,
+          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+          .pImageInfo = &imageInfo}}};
+
+    state.device.updateDescriptorSets(descriptorWrites, {});
+  }
+
+  auto presentCompleteSemaphores = createSemaphores(state.device, count);
+  auto inFlightFences = createFences(state.device, count);
 
   std::vector<FrameState> frameStates;
   frameStates.reserve(count);
@@ -54,8 +83,7 @@ createFrameStates(const State &state,
         .descriptorSet = std::move(descriptorSets[i]),
         .presentCompleteSemaphore = std::move(presentCompleteSemaphores[i]),
         .inFlightFence = std::move(inFlightFences[i]),
-        .ubo = std::move(uniformBuffers[i])
-    });
+        .ubo = std::move(uniformBuffers[i])});
   }
 
   return frameStates;
