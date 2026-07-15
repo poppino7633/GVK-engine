@@ -17,4 +17,8 @@ std::optional<uint32_t>
 getPhysicalDeviceQueueFamilyIndex(vk::raii::PhysicalDevice physicalDevice,
                                   const vk::raii::SurfaceKHR &surface);
 
+uint32_t findMemoryType(const vk::raii::PhysicalDevice &physicalDevice,
+                        uint32_t typeFilter,
+                        vk::MemoryPropertyFlags properties);
+
 } // namespace GVK

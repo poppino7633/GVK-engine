@@ -1,6 +1,7 @@
 #pragma once
 #include <GVK/device.hpp>
 #include <GVK/window.hpp>
+#include <GVK/sync.hpp>
 
 namespace GVK {
 
@@ -15,6 +16,7 @@ struct SwapChain {
   uint32_t minImageCount;
   vk::SurfaceFormatKHR surfaceFormat;
   std::vector<SwapChainImage> images;
+  std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
 };
 
 SwapChain createSwapChain(const vk::raii::Device &device,

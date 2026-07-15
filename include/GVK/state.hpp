@@ -6,6 +6,7 @@
 #include <GVK/command.hpp>
 #include <GVK/descriptor.hpp>
 #include <GVK/buffer.hpp>
+#include <GVK/image.hpp>
 #ifndef NDEBUG
 #include <GVK/debug.hpp>
 #endif
@@ -23,7 +24,6 @@ struct State {
   GVK::SwapChain swapChain;
   vk::raii::DescriptorPool descriptorPool = nullptr;
   vk::raii::CommandPool commandPool = nullptr;
-  std::vector<vk::raii::Semaphore> renderFinishedSemaphores;
 
   State(GLFWwindow *window, const std::vector<const char *> &validationLayers,
         const std::vector<const char *> &deviceExtensions, uint32_t maxDescriptorCount);

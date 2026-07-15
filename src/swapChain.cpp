@@ -106,6 +106,9 @@ SwapChain createSwapChain(const vk::raii::Device &device,
     vk::raii::ImageView imageView = {device, imageViewCreateInfo};
     swapChain.images.emplace_back(SwapChainImage{std::move(imageView), image});
   }
+  swapChain.renderFinishedSemaphores =
+      GVK::createSemaphores(device, swapChain.images.size());
+
   return swapChain;
 }
 

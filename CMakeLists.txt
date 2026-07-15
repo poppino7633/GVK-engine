@@ -121,6 +121,11 @@ add_custom_target(${SHADER_TARGET} DEPENDS ${SHADERS_DIR}/slang.spv)
 add_dependencies(${TEMPLATE_NAME} ${SHADER_TARGET})
 
 # Assets
-set (ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../assets/")
+set (ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets/")
 #file (COPY ${ASSET_DIR}/viking_room.obj DESTINATION ${TEMPLATE_DIR}/models)
 #file (COPY ${ASSET_DIR}/viking_room.png DESTINATION ${TEMPLATE_DIR}/textures)
+add_custom_command(TARGET ${TEMPLATE_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${ASSET_DIR}
+            ${TEMPLATE_DIR}/assets
+)

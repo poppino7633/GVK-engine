@@ -1,3 +1,4 @@
+#pragma once
 #include <GVK/device.hpp>
 
 namespace GVK {

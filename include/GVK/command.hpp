@@ -9,12 +9,16 @@ std::vector<vk::raii::CommandBuffer>
 createCommandBuffers(const vk::raii::Device &device,
                      const vk::raii::CommandPool &commandPool, uint32_t count);
 
-void transition_image_layout(const vk::raii::CommandBuffer &commandBuffer,
-                             vk::Image image, vk::ImageLayout oldLayout,
-                             vk::ImageLayout newLayout,
-                             vk::AccessFlags2 srcAccessMask,
-                             vk::AccessFlags2 dstAccessMask,
-                             vk::PipelineStageFlags2 srcStageMask,
-                             vk::PipelineStageFlags2 dstStageMask);
+
+struct SingleTimeCommand {
+  vk::raii::CommandBuffer handle;
+};
+
+SingleTimeCommand
+beginSingleTimeCommands(const vk::raii::Device &device,
+                        const vk::raii::CommandPool &commandPool);
+
+void endSingleTimeCommands(const vk::raii::Queue &queue,
+                           SingleTimeCommand command);
 
 } // namespace GVK

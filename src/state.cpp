@@ -29,8 +29,6 @@ State::State(GLFWwindow *window,
   descriptorPool = GVK::createDescriptorPool(device, maxDescriptorCount);
 
   commandPool = GVK::createCommandPool(device, queueFamilyIndex);
-  renderFinishedSemaphores =
-      GVK::createSemaphores(device, swapChain.images.size());
 }
 
 std::vector<FrameState>
@@ -69,9 +67,6 @@ void recreateSwapChain(GVK::State &state, GLFWwindow *window) {
   state.swapChain =
       GVK::createSwapChain(state.device, state.physicalDevice, window,
                            state.surface, &state.swapChain);
-
-  state.renderFinishedSemaphores =
-      GVK::createSemaphores(state.device, state.swapChain.images.size());
 }
 
 } // namespace GVK

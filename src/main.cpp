@@ -7,6 +7,7 @@ import vulkan_hpp;
 #include <GLFW/glfw3.h>
 
 #include <GVK/state.hpp>
+#include <GVK/texture.hpp>
 
 #include <chrono>
 #include <cstdlib>
@@ -72,14 +73,9 @@ void recordCommandBuffer(const GVK::FrameState &frameState,
                          const vk::raii::Buffer &indexBuffer) {
   assert(pipelineFamily.pipelines.size() > 0);
   frameState.commandBuffer.begin({});
-  GVK::transition_image_layout(
-      frameState.commandBuffer, swapChainImage.image,
-      vk::ImageLayout::eUndefined, vk::ImageLayout::eColorAttachmentOptimal,
-      {}, // srcAccessMask (no need to wait for previous operations)
-      vk::AccessFlagBits2::eColorAttachmentWrite,         // dstAccessMask
-      vk::PipelineStageFlagBits2::eColorAttachmentOutput, // srcStage
-      vk::PipelineStageFlagBits2::eColorAttachmentOutput  // dstStage
-  );
+  GVK::transitionImageLayout(frameState.commandBuffer, swapChainImage.image,
+                               vk::ImageLayout::eUndefined,
+                               vk::ImageLayout::eColorAttachmentOptimal);
 
   vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
   vk::RenderingAttachmentInfo attachmentInfo = {
@@ -119,19 +115,14 @@ void recordCommandBuffer(const GVK::FrameState &frameState,
   frameState.commandBuffer.endRendering();
   // After rendering, transition the swapchain image to
   // vk::ImageLayout::ePresentSrcKHR
-  GVK::transition_image_layout(
-      frameState.commandBuffer, swapChainImage.image,
-      vk::ImageLayout::eColorAttachmentOptimal, vk::ImageLayout::ePresentSrcKHR,
-      vk::AccessFlagBits2::eColorAttachmentWrite,         // srcAccessMask
-      {},                                                 // dstAccessMask
-      vk::PipelineStageFlagBits2::eColorAttachmentOutput, // srcStage
-      vk::PipelineStageFlagBits2::eBottomOfPipe           // dstStage
-  );
+  GVK::transitionImageLayout(frameState.commandBuffer, swapChainImage.image,
+                             vk::ImageLayout::eColorAttachmentOptimal,
+                             vk::ImageLayout::ePresentSrcKHR);
   frameState.commandBuffer.end();
 }
 
 void updateMatricesUBO(GVK::BufferMapped &matricesBuffer,
-                       const GVK::State &state) {
+                       vk::Extent2D swapChainExtent) {
   static auto startTime = std::chrono::high_resolution_clock::now();
 
   auto currentTime = std::chrono::high_resolution_clock::now();
@@ -143,11 +134,10 @@ void updateMatricesUBO(GVK::BufferMapped &matricesBuffer,
                           glm::vec3(0.0f, 0.0f, 1.0f));
   ubo.view = lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
                     glm::vec3(0.0f, 0.0f, 1.0f));
-  ubo.proj =
-      glm::perspective(glm::radians(45.0f),
-                       static_cast<float>(state.swapChain.extent.width) /
-                           static_cast<float>(state.swapChain.extent.height),
-                       0.1f, 10.0f);
+  ubo.proj = glm::perspective(glm::radians(45.0f),
+                              static_cast<float>(swapChainExtent.width) /
+                                  static_cast<float>(swapChainExtent.height),
+                              0.1f, 10.0f);
   ubo.proj[1][1] *= -1;
   memcpy(matricesBuffer.ptr, &ubo, sizeof(ubo));
 }
@@ -162,25 +152,27 @@ void drawFrame(GVK::State &state, GVK::FrameState &frameState,
     throw std::runtime_error("Failed to wait for fence!");
   }
 
-  auto [result, imageIndex] = state.swapChain.handle.acquireNextImage(
-      UINT64_MAX, *frameState.presentCompleteSemaphore, nullptr);
+  auto [acquireResult, swapChainImageIndex] =
+      state.swapChain.handle.acquireNextImage(
+          UINT64_MAX, *frameState.presentCompleteSemaphore, nullptr);
 
-  if (result == vk::Result::eErrorOutOfDateKHR) {
+  if (acquireResult == vk::Result::eErrorOutOfDateKHR) {
     GVK::recreateSwapChain(state, window.handle);
     return;
   }
-  if (result != vk::Result::eSuccess && result != vk::Result::eSuboptimalKHR) {
+  if (acquireResult != vk::Result::eSuccess &&
+      acquireResult != vk::Result::eSuboptimalKHR) {
     throw std::runtime_error("Failed to acquire swap chain image!");
   }
 
   // Only reset the fence if we are submitting work
   state.device.resetFences(*frameState.inFlightFence);
   frameState.commandBuffer.reset();
-  recordCommandBuffer(frameState, state.swapChain.images[imageIndex],
+  recordCommandBuffer(frameState, state.swapChain.images[swapChainImageIndex],
                       state.swapChain.extent, pipelineFamily, vertexBuffer,
                       indexBuffer);
 
-  updateMatricesUBO(frameState.ubo, state);
+  updateMatricesUBO(frameState.ubo, state.swapChain.extent);
 
   vk::PipelineStageFlags waitDestinationStageMask(
       vk::PipelineStageFlagBits::eColorAttachmentOutput);
@@ -191,15 +183,17 @@ void drawFrame(GVK::State &state, GVK::FrameState &frameState,
       .commandBufferCount = 1,
       .pCommandBuffers = &*frameState.commandBuffer,
       .signalSemaphoreCount = 1,
-      .pSignalSemaphores = &*state.renderFinishedSemaphores[imageIndex]};
+      .pSignalSemaphores =
+          &*state.swapChain.renderFinishedSemaphores[swapChainImageIndex]};
   state.queue.submit(submitInfo, *frameState.inFlightFence);
 
   vk::PresentInfoKHR presentInfo{
       .waitSemaphoreCount = 1,
-      .pWaitSemaphores = &*state.renderFinishedSemaphores[imageIndex],
+      .pWaitSemaphores =
+          &*state.swapChain.renderFinishedSemaphores[swapChainImageIndex],
       .swapchainCount = 1,
       .pSwapchains = &*state.swapChain.handle,
-      .pImageIndices = &imageIndex};
+      .pImageIndices = &swapChainImageIndex};
   auto presentResult = state.queue.presentKHR(presentInfo);
   if ((presentResult == vk::Result::eSuboptimalKHR) ||
       (presentResult == vk::Result::eErrorOutOfDateKHR) ||
@@ -264,6 +258,9 @@ int main() {
           state, pipelineFamily.descriptorSetLayout,
           GVK::createUniformBuffers<Matrices>(
               state.device, state.physicalDevice, MAX_FRAMES_IN_FLIGHT));
+
+
+      //auto [textureImage, textureImageMemory] = GVK::createTextureImage(state.device, state.physicalDevice, state.queue, state.commandPool, "assets/textures/texture.jpg");
 
       mainLoop(state, frameStates, window, pipelineFamily, vertexBuffer,
                indexBuffer);

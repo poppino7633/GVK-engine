@@ -1,21 +1,7 @@
 #include <GVK/buffer.hpp>
+#include <GVK/command.hpp>
 
 namespace GVK {
-uint32_t findMemoryType(const vk::raii::PhysicalDevice &physicalDevice,
-                        uint32_t typeFilter,
-                        vk::MemoryPropertyFlags properties) {
-
-  vk::PhysicalDeviceMemoryProperties memProperties =
-      physicalDevice.getMemoryProperties();
-  for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags &
-                                    properties) == properties) {
-      return i;
-    }
-  }
-  throw std::runtime_error("Failed to find suitable memory type!");
-}
-
 std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
 createBuffer(const vk::raii::Device &device,
              const vk::raii::PhysicalDevice &physicalDevice,
@@ -40,22 +26,11 @@ void copyBuffer(const vk::raii::Device &device,
                 const vk::raii::Queue &queue, vk::raii::Buffer &srcBuffer,
                 vk::raii::Buffer &dstBuffer, vk::DeviceSize size) {
 
-  vk::CommandBufferAllocateInfo allocInfo{.commandPool = commandPool,
-                                          .level =
-                                              vk::CommandBufferLevel::ePrimary,
-                                          .commandBufferCount = 1};
-  vk::raii::CommandBuffer copyCommandBuffer =
-      std::move(device.allocateCommandBuffers(allocInfo).front());
+  auto copyCommandBuffer = GVK::beginSingleTimeCommands(device, commandPool);
 
-  copyCommandBuffer.begin(
-      {.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-  copyCommandBuffer.copyBuffer(*srcBuffer, *dstBuffer,
-                               vk::BufferCopy(0, 0, size));
-  copyCommandBuffer.end();
-  queue.submit(vk::SubmitInfo{.commandBufferCount = 1,
-                              .pCommandBuffers = &*copyCommandBuffer},
-               nullptr);
-  queue.waitIdle();
+  copyCommandBuffer.handle.copyBuffer(*srcBuffer, *dstBuffer,
+                                   vk::BufferCopy(0, 0, size));
+  GVK::endSingleTimeCommands(queue, std::move(copyCommandBuffer));
 }
 
 } // namespace GVK

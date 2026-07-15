@@ -29,9 +29,8 @@ createBufferFromVec(const vk::raii::Device &device,
                     const vk::raii::CommandPool &commandPool,
                     const vk::raii::Queue &queue, std::vector<T> data,
                     vk::BufferUsageFlags usageFlags) {
-  assert(!data.empty());
 
-  vk::DeviceSize bufferSize = data.size() * sizeof(data[0]);
+  vk::DeviceSize bufferSize = data.size() * sizeof(T);
   auto [stagingBuffer, stagingBufferMemory] = GVK::createBuffer(
       device, physicalDevice, bufferSize, vk::BufferUsageFlagBits::eTransferSrc,
       vk::MemoryPropertyFlagBits::eHostVisible |
