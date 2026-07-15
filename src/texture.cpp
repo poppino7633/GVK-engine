@@ -2,11 +2,11 @@
 #include <GVK/texture.hpp>
 
 namespace GVK {
-std::pair<vk::raii::Image, vk::raii::DeviceMemory>
-createTextureImage(const vk::raii::Device &device,
-                   const vk::raii::PhysicalDevice &physicalDevice,
-                   const vk::raii::Queue &queue,
-                   const vk::raii::CommandPool &commandPool, std::string path) {
+Texture createTexture(const vk::raii::Device &device,
+                      const vk::raii::PhysicalDevice &physicalDevice,
+                      const vk::raii::Queue &queue,
+                      const vk::raii::CommandPool &commandPool,
+                      std::string path) {
   int texWidth, texHeight, texChannels;
   stbi_uc *pixels = stbi_load(path.c_str(), &texWidth, &texHeight, &texChannels,
                               STBI_rgb_alpha);
@@ -40,7 +40,11 @@ createTextureImage(const vk::raii::Device &device,
                       texHeight);
     endSingleTimeCommands(queue, std::move(command));
   }
-  return {std::move(image), std::move(imageMemory)};
+
+  vk::raii::ImageView imageView =
+      createImageView(device, *image, vk::Format::eR8G8B8A8Srgb);
+
+  return {std::move(image), std::move(imageMemory), std::move(imageView)};
 }
 
 } // namespace GVK

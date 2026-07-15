@@ -1,4 +1,3 @@
-#include "vulkan/vulkan.hpp"
 #include <GVK/image.hpp>
 
 namespace GVK {
@@ -100,6 +99,20 @@ void copyBufferToImage(vk::raii::CommandBuffer &commandBuffer,
 
   commandBuffer.copyBufferToImage(buffer, image,
                                   vk::ImageLayout::eTransferDstOptimal, region);
+}
+
+vk::raii::ImageView createImageView(const vk::raii::Device &device,
+                                    const vk::Image &image, vk::Format format) {
+  vk::ImageViewCreateInfo viewInfo{
+      .image = image,
+      .viewType = vk::ImageViewType::e2D,
+      .format = format,
+      .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
+                           .baseMipLevel = 0,
+                           .levelCount = 1,
+                           .baseArrayLayer = 0,
+                           .layerCount = 1}};
+  return vk::raii::ImageView(device, viewInfo);
 }
 
 } // namespace GVK

@@ -6,8 +6,8 @@
 namespace GVK {
 
 struct SwapChainImage {
-  vk::raii::ImageView imageView;
   vk::Image image;
+  vk::raii::ImageView imageView;
 };
 
 struct SwapChain {

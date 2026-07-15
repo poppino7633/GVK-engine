@@ -74,8 +74,8 @@ void recordCommandBuffer(const GVK::FrameState &frameState,
   assert(pipelineFamily.pipelines.size() > 0);
   frameState.commandBuffer.begin({});
   GVK::transitionImageLayout(frameState.commandBuffer, swapChainImage.image,
-                               vk::ImageLayout::eUndefined,
-                               vk::ImageLayout::eColorAttachmentOptimal);
+                             vk::ImageLayout::eUndefined,
+                             vk::ImageLayout::eColorAttachmentOptimal);
 
   vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
   vk::RenderingAttachmentInfo attachmentInfo = {
@@ -259,8 +259,9 @@ int main() {
           GVK::createUniformBuffers<Matrices>(
               state.device, state.physicalDevice, MAX_FRAMES_IN_FLIGHT));
 
-
-      //auto [textureImage, textureImageMemory] = GVK::createTextureImage(state.device, state.physicalDevice, state.queue, state.commandPool, "assets/textures/texture.jpg");
+      GVK::Texture texture = GVK::createTexture(
+          state.device, state.physicalDevice, state.queue, state.commandPool,
+          "assets/textures/texture.jpg");
 
       mainLoop(state, frameStates, window, pipelineFamily, vertexBuffer,
                indexBuffer);

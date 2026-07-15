@@ -1,5 +1,5 @@
+#include <GVK/image.hpp>
 #include <GVK/swapChain.hpp>
-#include <vulkan/vulkan_raii.hpp>
 
 namespace GVK {
 vk::SurfaceFormatKHR chooseSwapSurfaceFormat(
@@ -96,15 +96,9 @@ SwapChain createSwapChain(const vk::raii::Device &device,
       .surfaceFormat = swapChainSurfaceFormat,
   };
 
-  vk::ImageViewCreateInfo imageViewCreateInfo{
-      .viewType = vk::ImageViewType::e2D,
-      .format = swapChainSurfaceFormat.format,
-      .subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}};
-
   for (auto &image : swapChainImages) {
-    imageViewCreateInfo.image = image;
-    vk::raii::ImageView imageView = {device, imageViewCreateInfo};
-    swapChain.images.emplace_back(SwapChainImage{std::move(imageView), image});
+    swapChain.images.emplace_back(SwapChainImage{
+        image, createImageView(device, image, swapChainSurfaceFormat.format)});
   }
   swapChain.renderFinishedSemaphores =
       GVK::createSemaphores(device, swapChain.images.size());
