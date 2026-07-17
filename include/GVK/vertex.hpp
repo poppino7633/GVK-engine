@@ -23,5 +23,13 @@ struct TexVertex {
   static VertexDescription getVertexDescription();
 };
 
+struct Vertex {
+  glm::vec3 pos;
+  glm::vec3 color;
+  glm::vec2 texCoords;
+   
+  static VertexDescription getVertexDescription();
+};
+
 
 } // namespace GVK

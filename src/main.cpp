@@ -12,6 +12,7 @@ import vulkan_hpp;
 #include <chrono>
 #include <cstdlib>
 #include <fstream>
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
@@ -21,12 +22,21 @@ constexpr uint32_t WIDTH = 600;
 constexpr uint32_t HEIGHT = 600;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
-const std::vector<GVK::TexVertex> vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f}},
-                                              {{0.5f, -0.5f}, {0.0f, 0.0f}},
-                                              {{0.5f, 0.5f}, {0.0f, 1.0f}},
-                                              {{-0.5f, 0.5f}, {1.0f, 1.0f}}};
+const std::vector<GVK::Vertex> vertices = {
+    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+
+    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+};
+
 const std::vector<uint16_t> indices = {
-  0, 1, 2, 2, 3, 0
+    0, 1, 2, 2, 3, 0,
+    4, 5, 6, 6, 7, 4
 };
 
 struct Matrices {
@@ -126,11 +136,9 @@ void updateMatricesUBO(GVK::BufferMapped &matricesBuffer,
                    currentTime - startTime)
                    .count();
   Matrices ubo{};
-  ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-  ubo.model = glm::rotate(ubo.model, time * glm::radians(90.0f),
+  ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
                           glm::vec3(0.0f, 0.0f, 1.0f));
-  ubo.view = glm::lookAt(glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f),
-                    glm::vec3(0.0f, 0.0f, 1.0f));
+  ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
   ubo.proj = glm::perspective(glm::radians(90.0f),
                               static_cast<float>(swapChainExtent.width) /
                                   static_cast<float>(swapChainExtent.height),
@@ -245,7 +253,7 @@ int main() {
       GVK::addGraphicsPipeline(
           state.device, pipelineFamily,
           GVK::createShaderModule(state.device, readFile("shaders/slang.spv")),
-          GVK::TexVertex::getVertexDescription(), state.swapChain);
+          GVK::Vertex::getVertexDescription(), state.swapChain);
 
       auto [vertexBuffer, vertexBufferMemory] = GVK::createBufferFromVec(
           state.device, state.physicalDevice, state.commandPool, state.queue,
