@@ -68,5 +68,5 @@ vcpkg_installed/
 Testing/
 .cache/
 
-*.zip
+/Archive.zip
 
