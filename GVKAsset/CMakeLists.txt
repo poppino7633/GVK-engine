@@ -3,7 +3,6 @@ file(GLOB_RECURSE ASSET_SOURCES
     src/*.cpp
 )
 
-add_subdirectory(external/glm)
 
 add_library(GVKAsset
     ${ASSET_SOURCES}
@@ -19,7 +18,6 @@ target_include_directories(GVKAsset
 target_link_libraries(GVKAsset
     PUBLIC
         GVKCommon
-        glm
 )
 
 target_compile_features(GVKAsset

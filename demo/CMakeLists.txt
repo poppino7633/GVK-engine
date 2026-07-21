@@ -105,14 +105,9 @@ set(ASSET_DIR
 )
 
 add_custom_command(
-    TARGET demo
-    POST_BUILD
-
-    COMMAND
-        ${CMAKE_COMMAND} -E copy_directory
-        ${ASSET_DIR}
-        ${DEMO_OUTPUT_DIR}/assets
-
-    COMMENT
-        "Copying assets"
+    TARGET demo POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E rm -rf $<TARGET_FILE_DIR:demo>/assets
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${ASSET_DIR}
+            $<TARGET_FILE_DIR:demo>/assets
 )

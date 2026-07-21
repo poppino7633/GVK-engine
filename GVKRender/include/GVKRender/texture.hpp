@@ -5,9 +5,7 @@
 namespace GVK {
 
 struct Texture {
-  vk::raii::Image image;
-  vk::raii::DeviceMemory memory;
-  vk::raii::ImageView imageView;
+  Image image;
   vk::raii::Sampler sampler;
   static vk::DescriptorSetLayoutBinding getBinding();
   static vk::DescriptorPoolSize getPoolSize(uint32_t count);
@@ -19,6 +17,6 @@ Texture createTexture(const vk::raii::Device &device,
                       const vk::raii::PhysicalDevice &physicalDevice,
                       const vk::raii::Queue &queue,
                       const vk::raii::CommandPool &commandPool,
-                      GVK::ImageData imageData);
+                      GVK::PixelData imageData);
 
 } // namespace GVK

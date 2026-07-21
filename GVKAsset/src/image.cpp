@@ -3,7 +3,7 @@
 #include <stdexcept>
 
 namespace GVK {
-GVK::ImageData loadImage(std::string path) {
+GVK::PixelData loadImage(std::string path) {
   int texWidth, texHeight, texChannels;
   stbi_uc *pixels = stbi_load(path.c_str(), &texWidth, &texHeight,
                               &texChannels, STBI_rgb_alpha);
@@ -13,12 +13,12 @@ GVK::ImageData loadImage(std::string path) {
     throw std::runtime_error("failed to load texture image!");
   }
 
-  ImageData image;
-  image.format = PixelFormat::RGBA;
-  image.width = texWidth;
-  image.height = texHeight;
-  image.data.assign(pixels, pixels + texWidth * texHeight * 4);
+  PixelData pixelData;
+  pixelData.format = PixelFormat::RGBA;
+  pixelData.width = texWidth;
+  pixelData.height = texHeight;
+  pixelData.data.assign(pixels, pixels + texWidth * texHeight * 4);
 
-  return image;
+  return pixelData;
 }
 } // namespace GVK

@@ -1,5 +1,7 @@
+#include "vulkan/vulkan.hpp"
 #include <GVKRender/image.hpp>
 #include <GVKRender/swapChain.hpp>
+#include <vulkan/vulkan_raii.hpp>
 
 namespace GVK {
 vk::SurfaceFormatKHR chooseSwapSurfaceFormat(
@@ -50,6 +52,24 @@ chooseSwapMinImageCount(vk::SurfaceCapabilitiesKHR const &surfaceCapabilities) {
   return minImageCount;
 }
 
+vk::Format findDepthFormat(const vk::raii::PhysicalDevice &physicalDevice,
+                           const std::vector<vk::Format> &candidates,
+                           vk::ImageTiling tiling,
+                           vk::FormatFeatureFlags features) {
+  for (const auto format : candidates) {
+    vk::FormatProperties props = physicalDevice.getFormatProperties(format);
+
+    if (((tiling == vk::ImageTiling::eLinear) &&
+         ((props.linearTilingFeatures & features) == features)) ||
+        ((tiling == vk::ImageTiling::eOptimal) &&
+         ((props.optimalTilingFeatures & features) == features))) {
+      return format;
+    }
+  }
+
+  throw std::runtime_error("failed to find supported format!");
+}
+
 SwapChain createSwapChain(const vk::raii::Device &device,
                           vk::raii::PhysicalDevice physicalDevice,
                           GLFWwindow *window,
@@ -89,16 +109,33 @@ SwapChain createSwapChain(const vk::raii::Device &device,
   auto handle = vk::raii::SwapchainKHR(device, swapChainCreateInfo);
   auto swapChainImages = handle.getImages();
 
+  vk::Format depthFormat =
+      findDepthFormat(physicalDevice,
+                      {vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint,
+                       vk::Format::eD24UnormS8Uint},
+                      vk::ImageTiling::eOptimal,
+                      vk::FormatFeatureFlagBits::eDepthStencilAttachment);
+
   SwapChain swapChain{
       .handle = std::move(handle),
       .extent = swapChainExtent,
       .minImageCount = minImageCount,
       .surfaceFormat = swapChainSurfaceFormat,
+      .depthFormat = depthFormat,
   };
+
 
   for (auto &image : swapChainImages) {
     swapChain.images.emplace_back(SwapChainImage{
-        image, createImageView(device, image, swapChainSurfaceFormat.format)});
+        image,
+        createImageView(device, image, swapChainSurfaceFormat.format,
+                        vk::ImageAspectFlagBits::eColor),
+        createImage(device, physicalDevice, swapChainExtent.width,
+                    swapChainExtent.height, depthFormat,
+                    vk::ImageTiling::eOptimal,
+                    vk::ImageUsageFlagBits::eDepthStencilAttachment,
+                    vk::MemoryPropertyFlagBits::eDeviceLocal,
+                    vk::ImageAspectFlagBits::eDepth)});
   }
   swapChain.renderFinishedSemaphores =
       GVK::createSemaphores(device, swapChain.images.size());

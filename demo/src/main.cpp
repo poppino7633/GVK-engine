@@ -1,5 +1,4 @@
 #include "vulkan/vulkan.hpp"
-#include <filesystem>
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
 #include <vulkan/vulkan_raii.hpp>
 #else
@@ -8,8 +7,9 @@ import vulkan_hpp;
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include <GVKRender/state.hpp>
 #include <GVKAsset/image.hpp>
+#include <GVKAsset/model.hpp>
+#include <GVKRender/state.hpp>
 #include <demo/vertex.hpp>
 
 #include <chrono>
@@ -25,22 +25,7 @@ constexpr uint32_t WIDTH = 600;
 constexpr uint32_t HEIGHT = 600;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
-const std::vector<GVK::Vertex3D> vertices = {
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-
-    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-};
-
-const std::vector<uint16_t> indices = {
-    0, 1, 2, 2, 3, 0,
-    4, 5, 6, 6, 7, 4
-};
+GVK::MeshData mesh;
 
 struct Matrices {
   glm::mat4 model;
@@ -84,28 +69,43 @@ void recordCommandBuffer(const GVK::FrameState &frameState,
   frameState.commandBuffer.begin({});
   GVK::transitionImageLayout(frameState.commandBuffer, swapChainImage.image,
                              vk::ImageLayout::eUndefined,
-                             vk::ImageLayout::eColorAttachmentOptimal);
+                             vk::ImageLayout::eColorAttachmentOptimal,
+                             vk::ImageAspectFlagBits::eColor);
+  GVK::transitionImageLayout(
+      frameState.commandBuffer, swapChainImage.depthImage.handle,
+      vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthAttachmentOptimal,
+      vk::ImageAspectFlagBits::eDepth);
 
   vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
-  vk::RenderingAttachmentInfo attachmentInfo = {
+  vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
+  vk::RenderingAttachmentInfo colorAttachmentInfo = {
       .imageView = swapChainImage.imageView,
       .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
       .loadOp = vk::AttachmentLoadOp::eClear,
       .storeOp = vk::AttachmentStoreOp::eStore,
       .clearValue = clearColor};
 
+  vk::RenderingAttachmentInfo depthAttachmentInfo = {
+      .imageView = swapChainImage.depthImage.view,
+      .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
+      .loadOp = vk::AttachmentLoadOp::eClear,
+      .storeOp = vk::AttachmentStoreOp::eDontCare,
+      .clearValue = clearDepth};
+
   vk::RenderingInfo renderingInfo = {
       .renderArea = {.offset = {0, 0}, .extent = swapChainExtent},
       .layerCount = 1,
       .colorAttachmentCount = 1,
-      .pColorAttachments = &attachmentInfo};
+      .pColorAttachments = &colorAttachmentInfo,
+      .pDepthAttachment = &depthAttachmentInfo};
 
   frameState.commandBuffer.beginRendering(renderingInfo);
   frameState.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
                                         *pipelineFamily.pipelines[0]);
   frameState.commandBuffer.bindVertexBuffers(0, *vertexBuffer, {0});
-  frameState.commandBuffer.bindIndexBuffer(*indexBuffer, 0,
-                                           vk::IndexType::eUint16);
+  frameState.commandBuffer.bindIndexBuffer(
+      *indexBuffer, 0,
+      vk::IndexTypeValue<decltype(mesh.indices)::value_type>::value);
   frameState.commandBuffer.setViewport(
       0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width),
                       static_cast<float>(swapChainExtent.height), 0.0f, 1.0f));
@@ -118,15 +118,16 @@ void recordCommandBuffer(const GVK::FrameState &frameState,
 
   // Actual drawing code
 
-  frameState.commandBuffer.drawIndexed(static_cast<uint32_t>(indices.size()), 1,
-                                       0, 0, 0);
+  frameState.commandBuffer.drawIndexed(
+      static_cast<uint32_t>(mesh.indices.size()), 1, 0, 0, 0);
 
   frameState.commandBuffer.endRendering();
   // After rendering, transition the swapchain image to
   // vk::ImageLayout::ePresentSrcKHR
   GVK::transitionImageLayout(frameState.commandBuffer, swapChainImage.image,
                              vk::ImageLayout::eColorAttachmentOptimal,
-                             vk::ImageLayout::ePresentSrcKHR);
+                             vk::ImageLayout::ePresentSrcKHR,
+                             vk::ImageAspectFlagBits::eColor);
   frameState.commandBuffer.end();
 }
 
@@ -139,9 +140,14 @@ void updateMatricesUBO(GVK::BufferMapped &matricesBuffer,
                    currentTime - startTime)
                    .count();
   Matrices ubo{};
-  ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
+  ubo.model = glm::mat4(1.0f);
+  ubo.model = glm::rotate(ubo.model, time * glm::radians(90.0f),
                           glm::vec3(0.0f, 0.0f, 1.0f));
-  ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+  ubo.model = glm::rotate(ubo.model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+  ubo.model = glm::scale(ubo.model, glm::vec3(0.5f, 0.5f, 0.5f));
+  ubo.view =
+      glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+                  glm::vec3(0.0f, 0.0f, 1.0f));
   ubo.proj = glm::perspective(glm::radians(90.0f),
                               static_cast<float>(swapChainExtent.width) /
                                   static_cast<float>(swapChainExtent.height),
@@ -256,19 +262,21 @@ int main() {
       GVK::addGraphicsPipeline(
           state.device, pipelineFamily,
           GVK::createShaderModule(state.device, readFile("shaders/slang.spv")),
-          GVK::Vertex3D::getVertexDescription(), state.swapChain);
+          GVK::getVertexDescription<GVK::Vertex>(), state.swapChain);
+
+      mesh = GVK::loadModel("assets/models/backpack.obj");
 
       auto [vertexBuffer, vertexBufferMemory] = GVK::createBufferFromVec(
           state.device, state.physicalDevice, state.commandPool, state.queue,
-          vertices, vk::BufferUsageFlagBits::eVertexBuffer);
+          mesh.vertices, vk::BufferUsageFlagBits::eVertexBuffer);
 
       auto [indexBuffer, indexBufferMemory] = GVK::createBufferFromVec(
           state.device, state.physicalDevice, state.commandPool, state.queue,
-          indices, vk::BufferUsageFlagBits::eIndexBuffer);
+          mesh.indices, vk::BufferUsageFlagBits::eIndexBuffer);
 
-      GVK::Texture texture =
-          GVK::createTexture(state.device, state.physicalDevice, state.queue,
-                             state.commandPool, GVK::loadImage("assets/textures/texture.jpg"));
+      GVK::Texture texture = GVK::createTexture(
+          state.device, state.physicalDevice, state.queue, state.commandPool,
+          GVK::loadImage("assets/textures/albedo.jpeg"));
 
       std::vector<GVK::FrameState> frameStates = GVK::createFrameStates(
           state, pipelineFamily.descriptorSetLayout,

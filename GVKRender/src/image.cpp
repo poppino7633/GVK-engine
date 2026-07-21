@@ -1,12 +1,29 @@
+#include "vulkan/vulkan.hpp"
 #include <GVKRender/image.hpp>
 
 namespace GVK {
 
-std::pair<vk::raii::Image, vk::raii::DeviceMemory>
-createImage(const vk::raii::Device &device,
-            const vk::raii::PhysicalDevice &physicalDevice, uint32_t width,
-            uint32_t height, vk::Format format, vk::ImageTiling tiling,
-            vk::ImageUsageFlags usage, vk::MemoryPropertyFlags properties) {
+vk::raii::ImageView createImageView(const vk::raii::Device &device,
+                                    const vk::Image &image, vk::Format format,
+                                    vk::ImageAspectFlagBits aspectMask) {
+  vk::ImageViewCreateInfo viewInfo{
+      .image = image,
+      .viewType = vk::ImageViewType::e2D,
+      .format = format,
+      .subresourceRange = {.aspectMask = aspectMask,
+                           .baseMipLevel = 0,
+                           .levelCount = 1,
+                           .baseArrayLayer = 0,
+                           .layerCount = 1}};
+  return vk::raii::ImageView(device, viewInfo);
+}
+
+Image createImage(const vk::raii::Device &device,
+                  const vk::raii::PhysicalDevice &physicalDevice,
+                  uint32_t width, uint32_t height, vk::Format format,
+                  vk::ImageTiling tiling, vk::ImageUsageFlags usage,
+                  vk::MemoryPropertyFlags properties,
+                  vk::ImageAspectFlagBits aspectMask) {
   vk::ImageCreateInfo imageInfo{.imageType = vk::ImageType::e2D,
                                 .format = format,
                                 .extent = {width, height, 1},
@@ -27,22 +44,24 @@ createImage(const vk::raii::Device &device,
   vk::raii::DeviceMemory imageMemory =
       vk::raii::DeviceMemory(device, allocInfo);
   image.bindMemory(imageMemory, 0);
+  vk::raii::ImageView imageView =
+      createImageView(device, image, format, aspectMask);
 
-  return {std::move(image), std::move(imageMemory)};
+  return {std::move(image), std::move(imageMemory), std::move(imageView)};
 }
 
 void transitionImageLayout(const vk::raii::CommandBuffer &commandBuffer,
                            vk::Image image, vk::ImageLayout oldLayout,
-                           vk::ImageLayout newLayout) {
-  vk::ImageMemoryBarrier barrier{
-      .oldLayout = oldLayout,
-      .newLayout = newLayout,
-      .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
-      .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
-      .image = image,
-      .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                           .levelCount = 1,
-                           .layerCount = 1}};
+                           vk::ImageLayout newLayout,
+                           vk::ImageAspectFlagBits aspectMask) {
+  vk::ImageMemoryBarrier barrier{.oldLayout = oldLayout,
+                                 .newLayout = newLayout,
+                                 .srcQueueFamilyIndex = vk::QueueFamilyIgnored,
+                                 .dstQueueFamilyIndex = vk::QueueFamilyIgnored,
+                                 .image = image,
+                                 .subresourceRange = {.aspectMask = aspectMask,
+                                                      .levelCount = 1,
+                                                      .layerCount = 1}};
 
   vk::PipelineStageFlags sourceStage;
   vk::PipelineStageFlags destinationStage;
@@ -75,6 +94,14 @@ void transitionImageLayout(const vk::raii::CommandBuffer &commandBuffer,
 
     sourceStage = vk::PipelineStageFlagBits::eColorAttachmentOutput;
     destinationStage = vk::PipelineStageFlagBits::eBottomOfPipe;
+  } else if (oldLayout == vk::ImageLayout::eUndefined &&
+             newLayout == vk::ImageLayout::eDepthAttachmentOptimal) {
+
+    barrier.srcAccessMask = {};
+    barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+
+    sourceStage = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+    destinationStage = vk::PipelineStageFlagBits::eLateFragmentTests;
   } else {
     throw std::invalid_argument("unsupported layout transition!");
   }
@@ -99,20 +126,6 @@ void copyBufferToImage(vk::raii::CommandBuffer &commandBuffer,
 
   commandBuffer.copyBufferToImage(buffer, image,
                                   vk::ImageLayout::eTransferDstOptimal, region);
-}
-
-vk::raii::ImageView createImageView(const vk::raii::Device &device,
-                                    const vk::Image &image, vk::Format format) {
-  vk::ImageViewCreateInfo viewInfo{
-      .image = image,
-      .viewType = vk::ImageViewType::e2D,
-      .format = format,
-      .subresourceRange = {.aspectMask = vk::ImageAspectFlagBits::eColor,
-                           .baseMipLevel = 0,
-                           .levelCount = 1,
-                           .baseArrayLayer = 0,
-                           .layerCount = 1}};
-  return vk::raii::ImageView(device, viewInfo);
 }
 
 } // namespace GVK

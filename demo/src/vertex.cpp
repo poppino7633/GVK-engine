@@ -2,53 +2,23 @@
 
 namespace GVK {
 
-VertexDescription BasicVertex::getVertexDescription() {
+template <> VertexDescription getVertexDescription<Vertex>() {
   return {{.binding = 0,
-           .stride = sizeof(BasicVertex),
-           .inputRate = vk::VertexInputRate::eVertex},
-
-          {{.location = 0,
-            .binding = 0,
-            .format = vk::Format::eR32G32Sfloat,
-            .offset = offsetof(BasicVertex, pos)},
-           {.location = 1,
-            .binding = 0,
-            .format = vk::Format::eR32G32B32Sfloat,
-            .offset = offsetof(BasicVertex, color)}}};
-}
-
-VertexDescription TexVertex::getVertexDescription() {
-  return {{.binding = 0,
-           .stride = sizeof(TexVertex),
-           .inputRate = vk::VertexInputRate::eVertex},
-
-          {{.location = 0,
-            .binding = 0,
-            .format = vk::Format::eR32G32Sfloat,
-            .offset = offsetof(TexVertex, pos)},
-           {.location = 1,
-            .binding = 0,
-            .format = vk::Format::eR32G32Sfloat,
-            .offset = offsetof(TexVertex, texCoords)}}};
-}
-
-VertexDescription Vertex3D::getVertexDescription() {
-  return {{.binding = 0,
-           .stride = sizeof(Vertex3D),
+           .stride = sizeof(Vertex),
            .inputRate = vk::VertexInputRate::eVertex},
 
           {{.location = 0,
             .binding = 0,
             .format = vk::Format::eR32G32B32Sfloat,
-            .offset = offsetof(Vertex3D, pos)},
+            .offset = offsetof(Vertex, position)},
            {.location = 1,
             .binding = 0,
             .format = vk::Format::eR32G32B32Sfloat,
-            .offset = offsetof(Vertex3D, color)},
+            .offset = offsetof(Vertex, normal)},
            {.location = 2,
             .binding = 0,
             .format = vk::Format::eR32G32Sfloat,
-            .offset = offsetof(Vertex3D, texCoords)}}};
+            .offset = offsetof(Vertex, uv)}}};
 }
 
 } // namespace GVK

@@ -1,5 +1,5 @@
 #include <GVKCommon/data.hpp>
 #include <string>
 namespace GVK {
-GVK::ImageData loadImage(std::string path);
+GVK::PixelData loadImage(std::string path);
 };

@@ -5,7 +5,7 @@ Texture createTexture(const vk::raii::Device &device,
                       const vk::raii::PhysicalDevice &physicalDevice,
                       const vk::raii::Queue &queue,
                       const vk::raii::CommandPool &commandPool,
-                      GVK::ImageData imageData) {
+                      GVK::PixelData imageData) {
 
   if (imageData.format != PixelFormat::RGBA) {
     throw std::runtime_error("Wrong image format!");
@@ -20,26 +20,25 @@ Texture createTexture(const vk::raii::Device &device,
   memcpy(data, imageData.data.data(), imageData.data.size());
   stagingBufferMemory.unmapMemory();
 
-  auto [image, imageMemory] = createImage(
+  Image image = createImage(
       device, physicalDevice, imageData.width, imageData.height,
       vk::Format::eR8G8B8A8Srgb, vk::ImageTiling::eOptimal,
       vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
-      vk::MemoryPropertyFlagBits::eDeviceLocal);
+      vk::MemoryPropertyFlagBits::eDeviceLocal,
+      vk::ImageAspectFlagBits::eColor);
 
   {
     SingleTimeCommand command = beginSingleTimeCommands(device, commandPool);
-    transitionImageLayout(command.handle, image, vk::ImageLayout::eUndefined,
-                          vk::ImageLayout::eTransferDstOptimal);
-    copyBufferToImage(command.handle, stagingBuffer, image, imageData.width,
-                      imageData.height);
-    transitionImageLayout(command.handle, image,
+    transitionImageLayout(command.handle, image.handle,
+                          vk::ImageLayout::eUndefined,
+                          vk::ImageLayout::eTransferDstOptimal, vk::ImageAspectFlagBits::eColor);
+    copyBufferToImage(command.handle, stagingBuffer, image.handle,
+                      imageData.width, imageData.height);
+    transitionImageLayout(command.handle, image.handle,
                           vk::ImageLayout::eTransferDstOptimal,
-                          vk::ImageLayout::eShaderReadOnlyOptimal);
+                          vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eColor);
     endSingleTimeCommands(queue, std::move(command));
   }
-
-  vk::raii::ImageView imageView =
-      createImageView(device, *image, vk::Format::eR8G8B8A8Srgb);
 
   vk::PhysicalDeviceProperties properties = physicalDevice.getProperties();
   vk::SamplerCreateInfo samplerInfo{
@@ -63,8 +62,7 @@ Texture createTexture(const vk::raii::Device &device,
 
   vk::raii::Sampler sampler{device, samplerInfo};
 
-  return {std::move(image), std::move(imageMemory), std::move(imageView),
-          std::move(sampler)};
+  return {std::move(image), std::move(sampler)};
 }
 
 vk::DescriptorSetLayoutBinding Texture::getBinding() {
@@ -81,7 +79,7 @@ vk::DescriptorPoolSize Texture::getPoolSize(uint32_t count) {
 
 vk::DescriptorImageInfo getTextureImageInfo(const Texture &texture) {
   return {.sampler = texture.sampler,
-          .imageView = texture.imageView,
+          .imageView = texture.image.view,
           .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
 }
 

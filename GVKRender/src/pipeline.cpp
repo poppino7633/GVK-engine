@@ -35,7 +35,6 @@ createGraphicsPipeline(const vk::raii::Device &device,
                        vk::raii::ShaderModule shaderModule,
                        const VertexDescription &vertexDescription,
                        const vk::raii::PipelineLayout &pipelineLayout,
-
                        const SwapChain &swapChain) {
 
   vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
@@ -111,6 +110,13 @@ createGraphicsPipeline(const vk::raii::Device &device,
       .attachmentCount = 1,
       .pAttachments = &colorBlendAttachment};
 
+  vk::PipelineDepthStencilStateCreateInfo depthStencil{
+    .depthTestEnable       = vk::True,
+    .depthWriteEnable      = vk::True,
+    .depthCompareOp        = vk::CompareOp::eLess,
+    .depthBoundsTestEnable = vk::False,
+    .stencilTestEnable     = vk::False};
+
   vk::StructureChain<vk::GraphicsPipelineCreateInfo,
                      vk::PipelineRenderingCreateInfo>
       pipelineCreateInfoChain = {
@@ -121,12 +127,15 @@ createGraphicsPipeline(const vk::raii::Device &device,
            .pViewportState = &viewportState,
            .pRasterizationState = &rasterizer,
            .pMultisampleState = &multisampling,
+           .pDepthStencilState = &depthStencil,
            .pColorBlendState = &colorBlending,
            .pDynamicState = &dynamicState,
            .layout = pipelineLayout,
            .renderPass = nullptr},
           {.colorAttachmentCount = 1,
-           .pColorAttachmentFormats = &swapChain.surfaceFormat.format}};
+           .pColorAttachmentFormats = &swapChain.surfaceFormat.format,
+           .depthAttachmentFormat = swapChain.depthFormat,
+          }};
 
   return vk::raii::Pipeline(
       device, nullptr,
