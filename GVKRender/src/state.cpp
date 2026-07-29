@@ -5,7 +5,7 @@ State::State(GLFWwindow *window,
              const std::vector<const char *> &validationLayers,
              const std::vector<const char *> &deviceExtensions,
              const std::vector<vk::DescriptorPoolSize> &descriptorPoolSizes,
-             uint32_t maxDescriptorCount) {
+             uint32_t maxMaterials, uint32_t maxDescriptorCount) {
   instance = GVK::createInstance(context, validationLayers,
                                  GVK::getRequiredInstanceExtensions());
   if (!validationLayers.empty()) {
@@ -27,16 +27,21 @@ State::State(GLFWwindow *window,
   queue = vk::raii::Queue(device, queueFamilyIndex, 0);
   swapChain = GVK::createSwapChain(device, physicalDevice, window, surface);
 
-  descriptorPool = GVK::createDescriptorPool(device, descriptorPoolSizes,
+  std::vector<vk::DescriptorPoolSize> materialPoolSizes =
+      Material::getPoolSizes(maxMaterials);
+  std::vector<vk::DescriptorPoolSize> poolSizes;
+  poolSizes.reserve(descriptorPoolSizes.size() + materialPoolSizes.size());
+  poolSizes.insert(poolSizes.begin(), descriptorPoolSizes.begin(),
+                   descriptorPoolSizes.end());
+  poolSizes.insert(poolSizes.begin() + descriptorPoolSizes.size(),
+                   materialPoolSizes.begin(), materialPoolSizes.end());
+  descriptorPool = GVK::createDescriptorPool(device, poolSizes,
                                              maxDescriptorCount);
 
   commandPool = GVK::createCommandPool(device, queueFamilyIndex);
-}
 
-void updateDescriptorSets(
-    const vk::raii::Device &device,
-    const std::vector<vk::raii::DescriptorSet> &descriptorSets,
-    const std::vector<BufferMapped> &uniformBuffers) {}
+  materialSystem = createMaterialSystem(device, physicalDevice, descriptorPool, maxMaterials);
+}
 
 std::vector<FrameState>
 createFrameStates(const State &state,
@@ -51,8 +56,8 @@ createFrameStates(const State &state,
       state.device, state.descriptorPool, count, descriptorSetLayout);
 
   for (size_t i = 0; i < descriptorSets.size(); i++) {
-    vk::DescriptorBufferInfo bufferInfo =
-        getBufferMappedInfo(uniformBuffers[i], 0);
+    vk::DescriptorBufferInfo bufferInfo = {*uniformBuffers[i].buffer, 0,
+                                           uniformBuffers[i].bufferSize};
     vk::DescriptorImageInfo imageInfo = getTextureImageInfo(texture);
     std::array<vk::WriteDescriptorSet, 2> descriptorWrites{
         {{.dstSet = descriptorSets[i],

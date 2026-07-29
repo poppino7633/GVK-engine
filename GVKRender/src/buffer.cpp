@@ -33,8 +33,24 @@ void copyBuffer(const vk::raii::Device &device,
   GVK::endSingleTimeCommands(queue, std::move(copyCommandBuffer));
 }
 
-vk::DescriptorBufferInfo getBufferMappedInfo(const BufferMapped &buffer, vk::DeviceSize offset){
-  return { .buffer = buffer.buffer, .offset = offset, .range = buffer.bufferSize };
+BufferMapped
+createUniformBufferArray(const vk::raii::Device &device,
+                         const vk::raii::PhysicalDevice &physicalDevice,
+                         size_t size, size_t count) {
+  vk::DeviceSize bufferSize = size * count;
+  auto [buffer, bufferMem] =
+      createBuffer(device, physicalDevice, bufferSize,
+                   vk::BufferUsageFlagBits::eUniformBuffer,
+                   vk::MemoryPropertyFlagBits::eHostVisible |
+                       vk::MemoryPropertyFlagBits::eHostCoherent);
+
+  BufferMapped ubo = {
+      .buffer = std::move(buffer),
+      .memory = std::move(bufferMem),
+      .bufferSize = bufferSize,
+  };
+  ubo.ptr = ubo.memory.mapMemory(0, bufferSize);
+  return ubo;
 }
 
 

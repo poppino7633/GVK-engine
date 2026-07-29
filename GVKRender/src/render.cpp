@@ -131,4 +131,13 @@ void drawMesh(const GVK::FrameState &frameState, const Mesh &mesh,
   frameState.commandBuffer.drawIndexed(mesh.indexCount, 1, 0, 0, 0);
 }
 
+void bindMaterial(const GVK::FrameState &frameState,
+                  const PipelineHandle &pipeline,
+                  const MaterialSystem &materialSystem,
+                  const Material &material) {
+  frameState.commandBuffer.bindDescriptorSets(
+      vk::PipelineBindPoint::eGraphics, pipeline.layout, 1,
+      *materialSystem.descriptorSets[material.descriptorSetIndex], {});
+}
+
 }; // namespace GVK

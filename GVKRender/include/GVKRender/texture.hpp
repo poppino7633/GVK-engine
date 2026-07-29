@@ -8,7 +8,7 @@ namespace GVK {
 struct Texture {
   Image image;
   vk::raii::Sampler sampler;
-  static vk::DescriptorSetLayoutBinding getBinding();
+  static vk::DescriptorSetLayoutBinding getBinding(uint32_t index);
   static vk::DescriptorPoolSize getPoolSize(uint32_t count);
 };
 

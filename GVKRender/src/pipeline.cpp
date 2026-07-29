@@ -1,3 +1,4 @@
+#include "vulkan/vulkan.hpp"
 #include <GVKRender/pipeline.hpp>
 
 namespace GVK {
@@ -10,17 +11,9 @@ createShaderModule(const vk::raii::Device &device,
   return vk::raii::ShaderModule(device, createInfo);
 }
 
-vk::raii::DescriptorSetLayout
-createDescriptorSetLayout(const vk::raii::Device &device,
-                          vk::DescriptorSetLayoutBinding binding) {
-  vk::DescriptorSetLayoutCreateInfo layoutInfo{.bindingCount = 1,
-                                               .pBindings = &binding};
-  return vk::raii::DescriptorSetLayout(device, layoutInfo);
-}
-
-vk::raii::PipelineLayout
-createPipelineLayout(const vk::raii::Device &device,
-                     const vk::raii::DescriptorSetLayout &descriptorSetLayout) {
+vk::raii::PipelineLayout createPipelineLayout(
+    const vk::raii::Device &device,
+    const std::vector<vk::DescriptorSetLayout> &descriptorSetLayouts) {
 
   vk::PushConstantRange pushConstantRange = {
       .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
@@ -28,8 +21,8 @@ createPipelineLayout(const vk::raii::Device &device,
       .size = sizeof(PushConstants)};
 
   vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
-      .setLayoutCount = 1,
-      .pSetLayouts = &*descriptorSetLayout,
+      .setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size()),
+      .pSetLayouts = descriptorSetLayouts.data(),
       .pushConstantRangeCount = 1,
       .pPushConstantRanges = &pushConstantRange};
 
@@ -151,18 +144,12 @@ createGraphicsPipeline(const vk::raii::Device &device,
 
 PipelineFamily createPipelineFamily(
     const vk::raii::Device &device,
-    const std::vector<vk::DescriptorSetLayoutBinding> &bindings) {
-  vk::DescriptorSetLayoutCreateInfo layoutInfo{
-      .bindingCount = static_cast<uint32_t>(bindings.size()),
-      .pBindings = bindings.data()};
+    const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts) {
 
-  vk::raii::DescriptorSetLayout descriptorSetLayout{device, layoutInfo};
   vk::raii::PipelineLayout pipelineLayout =
-      createPipelineLayout(device, descriptorSetLayout);
+      createPipelineLayout(device, descriptorSetLayouts);
 
-  return {.descriptorSetLayout = std::move(descriptorSetLayout),
-          .pipelineLayout = std::move(pipelineLayout),
-          .pipelines = {}};
+  return {.pipelineLayout = std::move(pipelineLayout), .pipelines = {}};
 }
 
 void addGraphicsPipeline(const vk::raii::Device &device,
@@ -174,9 +161,8 @@ void addGraphicsPipeline(const vk::raii::Device &device,
       createGraphicsPipeline(device, std::move(shaderModule), vertexDescription,
                              pipelineFamily.pipelineLayout, swapChain)));
 }
-PipelineHandle getPipelineHandle(const PipelineFamily& family, size_t index) {
+PipelineHandle getPipelineHandle(const PipelineFamily &family, size_t index) {
   return {family.pipelineLayout, family.pipelines[index]};
 }
-
 
 } // namespace GVK

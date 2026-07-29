@@ -8,6 +8,7 @@
 #include <GVKRender/sync.hpp>
 #include <GVKRender/texture.hpp>
 #include <GVKRender/window.hpp>
+#include <GVKRender/material.hpp>
 #ifndef NDEBUG
 #include <GVKRender/debug.hpp>
 #endif
@@ -26,11 +27,12 @@ struct State {
   GVK::SwapChain swapChain;
   vk::raii::DescriptorPool descriptorPool = nullptr;
   vk::raii::CommandPool commandPool = nullptr;
+  MaterialSystem materialSystem;
 
   State(GLFWwindow *window, const std::vector<const char *> &validationLayers,
         const std::vector<const char *> &deviceExtensions,
         const std::vector<vk::DescriptorPoolSize> &descriptorPoolSizes,
-        uint32_t maxDescriptorCount);
+        uint32_t maxMaterials, uint32_t maxDescriptorCount);
 };
 
 struct FrameState {

@@ -4,14 +4,15 @@
 namespace GVK {
 
 struct BufferMapped {
-  vk::raii::Buffer buffer;
-  vk::raii::DeviceMemory memory;
+  vk::raii::Buffer buffer = nullptr;
+  vk::raii::DeviceMemory memory = nullptr;
   vk::DeviceSize bufferSize;
 
   void *ptr;
 };
 
-vk::DescriptorBufferInfo getBufferMappedInfo(const BufferMapped &buffer, vk::DeviceSize offset);
+vk::DescriptorBufferInfo getBufferMappedInfo(const BufferMapped &buffer,
+                                             vk::DeviceSize offset);
 
 std::pair<vk::raii::Buffer, vk::raii::DeviceMemory>
 createBuffer(const vk::raii::Device &device,
@@ -72,5 +73,10 @@ createUniformBuffers(const vk::raii::Device &device,
   }
   return uniformBuffers;
 }
+
+BufferMapped
+createUniformBufferArray(const vk::raii::Device &device,
+                         const vk::raii::PhysicalDevice &physicalDevice,
+                         size_t size, size_t count);
 
 } // namespace GVK

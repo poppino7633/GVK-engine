@@ -1,6 +1,6 @@
 #pragma once
-#include <glm/mat4x4.hpp>
 #include <GVKRender/swapChain.hpp>
+#include <glm/mat4x4.hpp>
 
 namespace GVK {
 
@@ -14,9 +14,7 @@ struct PushConstants {
 };
 
 struct PipelineFamily {
-  vk::raii::DescriptorSetLayout descriptorSetLayout;
   vk::raii::PipelineLayout pipelineLayout;
-
   std::vector<vk::raii::Pipeline> pipelines;
 };
 
@@ -36,8 +34,8 @@ void addGraphicsPipeline(const vk::raii::Device &device,
 
 PipelineFamily createPipelineFamily(
     const vk::raii::Device &device,
-    const std::vector<vk::DescriptorSetLayoutBinding> &bindings);
+    const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts);
 
-PipelineHandle getPipelineHandle(const PipelineFamily& family, size_t index);
+PipelineHandle getPipelineHandle(const PipelineFamily &family, size_t index);
 
 } // namespace GVK

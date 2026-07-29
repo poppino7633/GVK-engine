@@ -8,7 +8,16 @@ struct UniformBuffer {
   float4x4 view;
   float4x4 proj;
 };
+struct MaterialConstants {
+    float4 baseColor;
+    float metallic;
+    float roughness;
+};
+
+[[vk::binding(0, 0)]]
 ConstantBuffer<UniformBuffer> ubo;
+[[vk::binding(0, 1)]]
+ConstantBuffer<MaterialConstants> material;
 
 struct PushConstants
 {
@@ -17,6 +26,7 @@ struct PushConstants
 [[vk::push_constant]]
 PushConstants pc;
 
+[[vk::binding(1, 0)]]
 Sampler2D texture;
 
 struct VSOutput {
@@ -37,5 +47,5 @@ VSOutput vertMain(VSInput input) {
 
 [shader("fragment")]
 float4 fragMain(VSOutput vertIn) : SV_TARGET {
-  return texture.Sample(vertIn.texCoords);
+  return material.baseColor * texture.Sample(vertIn.texCoords);
 }

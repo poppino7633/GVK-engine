@@ -29,14 +29,15 @@ Texture createTexture(const vk::raii::Device &device,
 
   {
     SingleTimeCommand command = beginSingleTimeCommands(device, commandPool);
-    transitionImageLayout(command.handle, image.handle,
-                          vk::ImageLayout::eUndefined,
-                          vk::ImageLayout::eTransferDstOptimal, vk::ImageAspectFlagBits::eColor);
+    transitionImageLayout(
+        command.handle, image.handle, vk::ImageLayout::eUndefined,
+        vk::ImageLayout::eTransferDstOptimal, vk::ImageAspectFlagBits::eColor);
     copyBufferToImage(command.handle, stagingBuffer, image.handle,
                       imageData.width, imageData.height);
     transitionImageLayout(command.handle, image.handle,
                           vk::ImageLayout::eTransferDstOptimal,
-                          vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageAspectFlagBits::eColor);
+                          vk::ImageLayout::eShaderReadOnlyOptimal,
+                          vk::ImageAspectFlagBits::eColor);
     endSingleTimeCommands(queue, std::move(command));
   }
 
@@ -65,8 +66,8 @@ Texture createTexture(const vk::raii::Device &device,
   return {std::move(image), std::move(sampler)};
 }
 
-vk::DescriptorSetLayoutBinding Texture::getBinding() {
-  return {.binding = 1,
+vk::DescriptorSetLayoutBinding Texture::getBinding(uint32_t index) {
+  return {.binding = index,
           .descriptorType = vk::DescriptorType::eCombinedImageSampler,
           .descriptorCount = 1,
           .stageFlags = vk::ShaderStageFlagBits::eFragment};
