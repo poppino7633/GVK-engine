@@ -5,11 +5,17 @@ struct VSInput {
 };
 
 struct UniformBuffer {
-  float4x4 model;
   float4x4 view;
   float4x4 proj;
 };
 ConstantBuffer<UniformBuffer> ubo;
+
+struct PushConstants
+{
+    float4x4 model;
+};
+[[vk::push_constant]]
+PushConstants pc;
 
 Sampler2D texture;
 
@@ -23,7 +29,7 @@ struct VSOutput {
 VSOutput vertMain(VSInput input) {
   VSOutput output;
   output.pos = mul(
-      ubo.proj, mul(ubo.view, mul(ubo.model, float4(input.inPos, 1.0))));
+      ubo.proj, mul(ubo.view, mul(pc.model, float4(input.inPos, 1.0))));
   output.color = input.inColor; 
   output.texCoords = input.inTexCoords;
   return output;

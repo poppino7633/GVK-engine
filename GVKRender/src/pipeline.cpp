@@ -22,10 +22,16 @@ vk::raii::PipelineLayout
 createPipelineLayout(const vk::raii::Device &device,
                      const vk::raii::DescriptorSetLayout &descriptorSetLayout) {
 
-  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{.setLayoutCount = 1,
-                                                  .pSetLayouts =
-                                                      &*descriptorSetLayout,
-                                                  .pushConstantRangeCount = 0};
+  vk::PushConstantRange pushConstantRange = {
+      .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
+      .offset = 0,
+      .size = sizeof(PushConstants)};
+
+  vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
+      .setLayoutCount = 1,
+      .pSetLayouts = &*descriptorSetLayout,
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges = &pushConstantRange};
 
   return vk::raii::PipelineLayout(device, pipelineLayoutInfo);
 }
@@ -111,11 +117,11 @@ createGraphicsPipeline(const vk::raii::Device &device,
       .pAttachments = &colorBlendAttachment};
 
   vk::PipelineDepthStencilStateCreateInfo depthStencil{
-    .depthTestEnable       = vk::True,
-    .depthWriteEnable      = vk::True,
-    .depthCompareOp        = vk::CompareOp::eLess,
-    .depthBoundsTestEnable = vk::False,
-    .stencilTestEnable     = vk::False};
+      .depthTestEnable = vk::True,
+      .depthWriteEnable = vk::True,
+      .depthCompareOp = vk::CompareOp::eLess,
+      .depthBoundsTestEnable = vk::False,
+      .stencilTestEnable = vk::False};
 
   vk::StructureChain<vk::GraphicsPipelineCreateInfo,
                      vk::PipelineRenderingCreateInfo>
@@ -132,9 +138,10 @@ createGraphicsPipeline(const vk::raii::Device &device,
            .pDynamicState = &dynamicState,
            .layout = pipelineLayout,
            .renderPass = nullptr},
-          {.colorAttachmentCount = 1,
-           .pColorAttachmentFormats = &swapChain.surfaceFormat.format,
-           .depthAttachmentFormat = swapChain.depthFormat,
+          {
+              .colorAttachmentCount = 1,
+              .pColorAttachmentFormats = &swapChain.surfaceFormat.format,
+              .depthAttachmentFormat = swapChain.depthFormat,
           }};
 
   return vk::raii::Pipeline(
@@ -167,5 +174,9 @@ void addGraphicsPipeline(const vk::raii::Device &device,
       createGraphicsPipeline(device, std::move(shaderModule), vertexDescription,
                              pipelineFamily.pipelineLayout, swapChain)));
 }
+PipelineHandle getPipelineHandle(const PipelineFamily& family, size_t index) {
+  return {family.pipelineLayout, family.pipelines[index]};
+}
+
 
 } // namespace GVK

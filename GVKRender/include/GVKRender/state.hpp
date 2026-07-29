@@ -1,3 +1,4 @@
+#pragma once
 #include <GVKRender/buffer.hpp>
 #include <GVKRender/command.hpp>
 #include <GVKRender/descriptor.hpp>
@@ -38,6 +39,9 @@ struct FrameState {
   vk::raii::Semaphore presentCompleteSemaphore;
   vk::raii::Fence inFlightFence;
   BufferMapped ubo;
+  unsigned int swapChainImageIndex;
+  std::shared_ptr<PipelineFamily> currentPipelineFamily;
+  size_t currentPipelineIndex;
 };
 
 void recreateSwapChain(GVK::State &state, GLFWwindow *window);

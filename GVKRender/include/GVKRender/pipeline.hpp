@@ -1,4 +1,5 @@
 #pragma once
+#include <glm/mat4x4.hpp>
 #include <GVKRender/swapChain.hpp>
 
 namespace GVK {
@@ -8,11 +9,20 @@ struct VertexDescription {
   std::vector<vk::VertexInputAttributeDescription> attributeDescriptions;
 };
 
+struct PushConstants {
+  glm::mat4 modelMatrix;
+};
+
 struct PipelineFamily {
   vk::raii::DescriptorSetLayout descriptorSetLayout;
   vk::raii::PipelineLayout pipelineLayout;
 
   std::vector<vk::raii::Pipeline> pipelines;
+};
+
+struct PipelineHandle {
+  const vk::raii::PipelineLayout &layout;
+  const vk::raii::Pipeline &pipeline;
 };
 
 vk::raii::ShaderModule createShaderModule(const vk::raii::Device &device,
@@ -27,5 +37,7 @@ void addGraphicsPipeline(const vk::raii::Device &device,
 PipelineFamily createPipelineFamily(
     const vk::raii::Device &device,
     const std::vector<vk::DescriptorSetLayoutBinding> &bindings);
+
+PipelineHandle getPipelineHandle(const PipelineFamily& family, size_t index);
 
 } // namespace GVK

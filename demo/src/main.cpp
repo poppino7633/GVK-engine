@@ -1,3 +1,4 @@
+#include "GVKRender/pipeline.hpp"
 #include "vulkan/vulkan.hpp"
 #if defined(__INTELLISENSE__) || !defined(USE_CPP20_MODULES)
 #include <vulkan/vulkan_raii.hpp>
@@ -9,6 +10,7 @@ import vulkan_hpp;
 
 #include <GVKAsset/image.hpp>
 #include <GVKAsset/model.hpp>
+#include <GVKRender/render.hpp>
 #include <GVKRender/state.hpp>
 #include <demo/vertex.hpp>
 
@@ -25,10 +27,7 @@ constexpr uint32_t WIDTH = 600;
 constexpr uint32_t HEIGHT = 600;
 constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
-GVK::MeshData mesh;
-
 struct Matrices {
-  glm::mat4 model;
   glm::mat4 view;
   glm::mat4 proj;
 
@@ -59,92 +58,9 @@ std::vector<char> readFile(const std::string &filename) {
   return buffer;
 }
 
-void recordCommandBuffer(const GVK::FrameState &frameState,
-                         const GVK::SwapChainImage &swapChainImage,
-                         vk::Extent2D swapChainExtent,
-                         const GVK::PipelineFamily &pipelineFamily,
-                         const vk::raii::Buffer &vertexBuffer,
-                         const vk::raii::Buffer &indexBuffer) {
-  assert(pipelineFamily.pipelines.size() > 0);
-  frameState.commandBuffer.begin({});
-  GVK::transitionImageLayout(frameState.commandBuffer, swapChainImage.image,
-                             vk::ImageLayout::eUndefined,
-                             vk::ImageLayout::eColorAttachmentOptimal,
-                             vk::ImageAspectFlagBits::eColor);
-  GVK::transitionImageLayout(
-      frameState.commandBuffer, swapChainImage.depthImage.handle,
-      vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthAttachmentOptimal,
-      vk::ImageAspectFlagBits::eDepth);
-
-  vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
-  vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
-  vk::RenderingAttachmentInfo colorAttachmentInfo = {
-      .imageView = swapChainImage.imageView,
-      .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-      .loadOp = vk::AttachmentLoadOp::eClear,
-      .storeOp = vk::AttachmentStoreOp::eStore,
-      .clearValue = clearColor};
-
-  vk::RenderingAttachmentInfo depthAttachmentInfo = {
-      .imageView = swapChainImage.depthImage.view,
-      .imageLayout = vk::ImageLayout::eDepthAttachmentOptimal,
-      .loadOp = vk::AttachmentLoadOp::eClear,
-      .storeOp = vk::AttachmentStoreOp::eDontCare,
-      .clearValue = clearDepth};
-
-  vk::RenderingInfo renderingInfo = {
-      .renderArea = {.offset = {0, 0}, .extent = swapChainExtent},
-      .layerCount = 1,
-      .colorAttachmentCount = 1,
-      .pColorAttachments = &colorAttachmentInfo,
-      .pDepthAttachment = &depthAttachmentInfo};
-
-  frameState.commandBuffer.beginRendering(renderingInfo);
-  frameState.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-                                        *pipelineFamily.pipelines[0]);
-  frameState.commandBuffer.bindVertexBuffers(0, *vertexBuffer, {0});
-  frameState.commandBuffer.bindIndexBuffer(
-      *indexBuffer, 0,
-      vk::IndexTypeValue<decltype(mesh.indices)::value_type>::value);
-  frameState.commandBuffer.setViewport(
-      0, vk::Viewport(0.0f, 0.0f, static_cast<float>(swapChainExtent.width),
-                      static_cast<float>(swapChainExtent.height), 0.0f, 1.0f));
-  frameState.commandBuffer.setScissor(
-      0, vk::Rect2D(vk::Offset2D(0, 0), swapChainExtent));
-
-  frameState.commandBuffer.bindDescriptorSets(
-      vk::PipelineBindPoint::eGraphics, pipelineFamily.pipelineLayout, 0,
-      *frameState.descriptorSet, nullptr);
-
-  // Actual drawing code
-
-  frameState.commandBuffer.drawIndexed(
-      static_cast<uint32_t>(mesh.indices.size()), 1, 0, 0, 0);
-
-  frameState.commandBuffer.endRendering();
-  // After rendering, transition the swapchain image to
-  // vk::ImageLayout::ePresentSrcKHR
-  GVK::transitionImageLayout(frameState.commandBuffer, swapChainImage.image,
-                             vk::ImageLayout::eColorAttachmentOptimal,
-                             vk::ImageLayout::ePresentSrcKHR,
-                             vk::ImageAspectFlagBits::eColor);
-  frameState.commandBuffer.end();
-}
-
 void updateMatricesUBO(GVK::BufferMapped &matricesBuffer,
                        vk::Extent2D swapChainExtent) {
-  static auto startTime = std::chrono::high_resolution_clock::now();
-
-  auto currentTime = std::chrono::high_resolution_clock::now();
-  float time = std::chrono::duration<float, std::chrono::seconds::period>(
-                   currentTime - startTime)
-                   .count();
   Matrices ubo{};
-  ubo.model = glm::mat4(1.0f);
-  ubo.model = glm::rotate(ubo.model, time * glm::radians(90.0f),
-                          glm::vec3(0.0f, 0.0f, 1.0f));
-  ubo.model = glm::rotate(ubo.model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-  ubo.model = glm::scale(ubo.model, glm::vec3(0.5f, 0.5f, 0.5f));
   ubo.view =
       glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
                   glm::vec3(0.0f, 0.0f, 1.0f));
@@ -156,81 +72,42 @@ void updateMatricesUBO(GVK::BufferMapped &matricesBuffer,
   memcpy(matricesBuffer.ptr, &ubo, sizeof(ubo));
 }
 
-void drawFrame(GVK::State &state, GVK::FrameState &frameState,
-               const GVK::PipelineFamily &pipelineFamily,
-               const vk::raii::Buffer &vertexBuffer,
-               const vk::raii::Buffer &indexBuffer, GVK::Window &window) {
-  auto fenceResult = state.device.waitForFences(*frameState.inFlightFence,
-                                                vk::True, UINT64_MAX);
-  if (fenceResult != vk::Result::eSuccess) {
-    throw std::runtime_error("Failed to wait for fence!");
-  }
-
-  auto [acquireResult, swapChainImageIndex] =
-      state.swapChain.handle.acquireNextImage(
-          UINT64_MAX, *frameState.presentCompleteSemaphore, nullptr);
-
-  if (acquireResult == vk::Result::eErrorOutOfDateKHR) {
-    GVK::recreateSwapChain(state, window.handle);
-    return;
-  }
-  if (acquireResult != vk::Result::eSuccess &&
-      acquireResult != vk::Result::eSuboptimalKHR) {
-    throw std::runtime_error("Failed to acquire swap chain image!");
-  }
-
-  // Only reset the fence if we are submitting work
-  state.device.resetFences(*frameState.inFlightFence);
-  frameState.commandBuffer.reset();
-  recordCommandBuffer(frameState, state.swapChain.images[swapChainImageIndex],
-                      state.swapChain.extent, pipelineFamily, vertexBuffer,
-                      indexBuffer);
-
-  updateMatricesUBO(frameState.ubo, state.swapChain.extent);
-
-  vk::PipelineStageFlags waitDestinationStageMask(
-      vk::PipelineStageFlagBits::eColorAttachmentOutput);
-  const vk::SubmitInfo submitInfo{
-      .waitSemaphoreCount = 1,
-      .pWaitSemaphores = &*frameState.presentCompleteSemaphore,
-      .pWaitDstStageMask = &waitDestinationStageMask,
-      .commandBufferCount = 1,
-      .pCommandBuffers = &*frameState.commandBuffer,
-      .signalSemaphoreCount = 1,
-      .pSignalSemaphores =
-          &*state.swapChain.renderFinishedSemaphores[swapChainImageIndex]};
-  state.queue.submit(submitInfo, *frameState.inFlightFence);
-
-  vk::PresentInfoKHR presentInfo{
-      .waitSemaphoreCount = 1,
-      .pWaitSemaphores =
-          &*state.swapChain.renderFinishedSemaphores[swapChainImageIndex],
-      .swapchainCount = 1,
-      .pSwapchains = &*state.swapChain.handle,
-      .pImageIndices = &swapChainImageIndex};
-  auto presentResult = state.queue.presentKHR(presentInfo);
-  if ((presentResult == vk::Result::eSuboptimalKHR) ||
-      (presentResult == vk::Result::eErrorOutOfDateKHR) ||
-      window.framebufferResized) {
-    window.framebufferResized = false;
-    GVK::recreateSwapChain(state, window.handle);
-  } else {
-    // There are no other success codes than eSuccess; on any error code,
-    // presentKHR already threw an exception.
-    assert(presentResult == vk::Result::eSuccess);
-  }
-}
-
 void mainLoop(GVK::State &state, std::vector<GVK::FrameState> &frameStates,
               GVK::Window &window, const GVK::PipelineFamily &pipelineFamily,
-              const vk::raii::Buffer &vertexBuffer,
-              const vk::raii::Buffer &indexBuffer) {
+              const GVK::Mesh &mesh) {
   std::cout << "Starting main loop" << std::endl;
   uint32_t frameIndex = 0;
   while (!glfwWindowShouldClose(window.handle)) {
     glfwPollEvents();
-    drawFrame(state, frameStates[frameIndex], pipelineFamily, vertexBuffer,
-              indexBuffer, window);
+    GVK::FrameState &frameState = frameStates[frameIndex];
+    updateMatricesUBO(frameState.ubo, state.swapChain.extent);
+    GVK::beginFrame(state, frameState, window);
+    frameState.commandBuffer.bindDescriptorSets(
+        vk::PipelineBindPoint::eGraphics, pipelineFamily.pipelineLayout, 0,
+        *frameState.descriptorSet, nullptr);
+
+    GVK::PipelineHandle pipelineHandle =
+        GVK::getPipelineHandle(pipelineFamily, 0);
+
+    GVK::bindPipeline(frameState, pipelineHandle);
+
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(
+                     currentTime - startTime)
+                     .count();
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::rotate(model, time * glm::radians(90.0f),
+                        glm::vec3(0.0f, 0.0f, 1.0f));
+    model =
+        glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
+
+    GVK::drawMesh(frameState, mesh, pipelineHandle, {model});
+
+    GVK::endFrame(state, frameState, window);
+
     frameIndex = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
   }
   state.device.waitIdle();
@@ -264,15 +141,11 @@ int main() {
           GVK::createShaderModule(state.device, readFile("shaders/slang.spv")),
           GVK::getVertexDescription<GVK::Vertex>(), state.swapChain);
 
-      mesh = GVK::loadModel("assets/models/backpack.obj");
+      GVK::MeshData meshData = GVK::loadModel("assets/models/backpack.obj");
 
-      auto [vertexBuffer, vertexBufferMemory] = GVK::createBufferFromVec(
-          state.device, state.physicalDevice, state.commandPool, state.queue,
-          mesh.vertices, vk::BufferUsageFlagBits::eVertexBuffer);
-
-      auto [indexBuffer, indexBufferMemory] = GVK::createBufferFromVec(
-          state.device, state.physicalDevice, state.commandPool, state.queue,
-          mesh.indices, vk::BufferUsageFlagBits::eIndexBuffer);
+      GVK::Mesh mesh =
+          GVK::createMesh(state.device, state.physicalDevice, state.commandPool,
+                          state.queue, meshData);
 
       GVK::Texture texture = GVK::createTexture(
           state.device, state.physicalDevice, state.queue, state.commandPool,
@@ -284,8 +157,7 @@ int main() {
               state.device, state.physicalDevice, MAX_FRAMES_IN_FLIGHT),
           texture);
 
-      mainLoop(state, frameStates, window, pipelineFamily, vertexBuffer,
-               indexBuffer);
+      mainLoop(state, frameStates, window, pipelineFamily, mesh);
     }
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;

@@ -1,3 +1,4 @@
+#pragma once
 #include <GVKCommon/data.hpp>
 #include <GVKRender/command.hpp>
 #include <GVKRender/image.hpp>
