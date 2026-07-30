@@ -54,7 +54,7 @@ void updateMatricesUBO(GVK::BufferMapped &matricesBuffer,
                        vk::Extent2D swapChainExtent) {
   Matrices ubo{};
   ubo.view =
-      glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+      glm::lookAt(glm::vec3(0.0f, 4.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f),
                   glm::vec3(0.0f, 0.0f, 1.0f));
   ubo.proj = glm::perspective(glm::radians(90.0f),
                               static_cast<float>(swapChainExtent.width) /
@@ -90,8 +90,8 @@ void mainLoop(GVK::State &state, std::vector<GVK::FrameState> &frameStates,
                      currentTime - startTime)
                      .count();
     glm::mat4 model = glm::mat4(1.0f);
-    model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 1.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    //model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 1.0f, 0.0f));
+    //model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, time * glm::radians(90.0f),
                         glm::vec3(0.0f, 0.0f, 1.0f));
     model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));

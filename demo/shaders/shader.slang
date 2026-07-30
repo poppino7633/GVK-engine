@@ -59,7 +59,7 @@ VSOutput vertMain(VSInput input) {
     N.x, N.y, N.z
 );
   output.n = N;
-  output.tg = input.inTangent.xyz;
+  output.tg = T;
 
   return output;
 }
@@ -76,7 +76,7 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
   float3 worldNormal = normalize(mul(tangentNormal, vertIn.TBN));
   worldNormal = vertIn.n;
 
-  float3 lightPos = float3(-2.0, -2.0, 3.0);
+  float3 lightPos = float3(0.0, -2.0, 3.0);
   float3 lightDir = normalize(lightPos - vertIn.worldPos.xyz);
 
   float NdotL = max(dot(worldNormal, lightDir), 0.0);
