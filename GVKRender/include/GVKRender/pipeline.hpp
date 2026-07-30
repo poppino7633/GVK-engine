@@ -11,6 +11,7 @@ struct VertexDescription {
 
 struct PushConstants {
   glm::mat4 modelMatrix;
+  glm::mat4 normalMatrix;
 };
 
 struct PipelineFamily {

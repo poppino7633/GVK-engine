@@ -22,7 +22,10 @@ MeshData generateUVSphere(float radius, uint32_t stacks, uint32_t slices) {
       vertex.position = {x, y, z};
       vertex.normal = glm::normalize(vertex.position);
       vertex.uv = {u, v};
-
+      vertex.tangent = glm::vec4(
+          glm::normalize(glm::vec3(-std::sin(theta), 0.0f, std::cos(theta))),
+          1.0f);
+      vertex.tangent = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
       data.vertices.push_back(vertex);
     }
   }

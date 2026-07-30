@@ -5,7 +5,7 @@ Texture createTexture(const vk::raii::Device &device,
                       const vk::raii::PhysicalDevice &physicalDevice,
                       const vk::raii::Queue &queue,
                       const vk::raii::CommandPool &commandPool,
-                      GVK::PixelData imageData) {
+                      GVK::PixelData imageData, std::string name) {
 
   if (imageData.format != PixelFormat::RGBA) {
     throw std::runtime_error("Wrong image format!");
@@ -63,7 +63,7 @@ Texture createTexture(const vk::raii::Device &device,
 
   vk::raii::Sampler sampler{device, samplerInfo};
 
-  return {std::move(image), std::move(sampler)};
+  return {name, std::move(image), std::move(sampler)};
 }
 
 vk::DescriptorSetLayoutBinding Texture::getBinding(uint32_t index) {
@@ -82,6 +82,17 @@ vk::DescriptorImageInfo getTextureImageInfo(const Texture &texture) {
   return {.sampler = texture.sampler,
           .imageView = texture.image.view,
           .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal};
+}
+
+void addTexture(TextureManager &manager, Texture texture) {
+  std::string name = texture.name;
+  manager.textures[name] =
+      std::make_shared<Texture>(std::move(texture));
+}
+
+std::shared_ptr<Texture> getTexture(TextureManager &manager, std::string name) {
+  assert(manager.textures.contains(name));
+  return manager.textures.at(name);
 }
 
 } // namespace GVK

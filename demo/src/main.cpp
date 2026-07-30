@@ -1,3 +1,4 @@
+#include "GVKRender/texture.hpp"
 #include <GVKAsset/image.hpp>
 #include <GVKAsset/model.hpp>
 #include <GVKAsset/shapes.hpp>
@@ -89,13 +90,15 @@ void mainLoop(GVK::State &state, std::vector<GVK::FrameState> &frameStates,
                      currentTime - startTime)
                      .count();
     glm::mat4 model = glm::mat4(1.0f);
+    model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, time * glm::radians(90.0f),
                         glm::vec3(0.0f, 0.0f, 1.0f));
     model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
-
+    glm::mat4 normalMatrix = glm::transpose(glm::inverse(model));
     GVK::bindMaterial(frameState, pipelineHandle, state.materialSystem,
                       material);
-    GVK::drawMesh(frameState, mesh, pipelineHandle, {model});
+    GVK::drawMesh(frameState, mesh, pipelineHandle, {model, model});
 
     GVK::endFrame(state, frameState, window);
 
@@ -113,52 +116,64 @@ int main() {
     const std::vector<char const *> validationLayers = {
         "VK_LAYER_KHRONOS_validation"};
 #endif
-    
-      std::vector<vk::DescriptorPoolSize> poolSizes = {
-          Matrices::getPoolSize(MAX_FRAMES_IN_FLIGHT),
-          GVK::Texture::getPoolSize(MAX_FRAMES_IN_FLIGHT)};
 
-      GVK::State state(window.handle, validationLayers,
-                       {vk::KHRSwapchainExtensionName}, poolSizes, 64, 100);
+    std::vector<vk::DescriptorPoolSize> poolSizes = {
+        Matrices::getPoolSize(MAX_FRAMES_IN_FLIGHT)};
 
-      std::vector<vk::DescriptorSetLayoutBinding> globalBindings = {
-          Matrices::getBinding(0), GVK::Texture::getBinding(1)};
+    GVK::State state(window.handle, validationLayers,
+                     {vk::KHRSwapchainExtensionName}, poolSizes, 64, 100);
 
-      vk::raii::DescriptorSetLayout globalLayout =
-          GVK::createDescriptorSetLayout(state.device, globalBindings);
+    std::vector<vk::DescriptorSetLayoutBinding> globalBindings = {
+        Matrices::getBinding(0)};
 
-      GVK::PipelineFamily pipelineFamily = GVK::createPipelineFamily(
-          state.device,
-          {*globalLayout, *state.materialSystem.descriptorSetLayout});
+    vk::raii::DescriptorSetLayout globalLayout =
+        GVK::createDescriptorSetLayout(state.device, globalBindings);
 
-      GVK::addGraphicsPipeline(
-          state.device, pipelineFamily,
-          GVK::createShaderModule(state.device, readFile("shaders/slang.spv")),
-          GVK::getVertexDescription<GVK::Vertex>(), state.swapChain);
+    GVK::PipelineFamily pipelineFamily = GVK::createPipelineFamily(
+        state.device,
+        {*globalLayout, *state.materialSystem.descriptorSetLayout});
 
-      GVK::MeshData meshData = GVK::shapes::generateUVSphere(2.0f, 32, 64);
+    GVK::addGraphicsPipeline(
+        state.device, pipelineFamily,
+        GVK::createShaderModule(state.device, readFile("shaders/slang.spv")),
+        GVK::getVertexDescription<GVK::Vertex>(), state.swapChain);
 
-      GVK::Mesh mesh =
-          GVK::createMesh(state.device, state.physicalDevice, state.commandPool,
-                          state.queue, meshData);
-      GVK::Material material =
-          GVK::createMaterial(state.device, state.materialSystem,
-                              {.baseColor = {1.0f, 0.0f, 0.0f, 1.0f},
-                               .metallic = 0.0f,
-                               .roughness = 1.0f});
+    GVK::MeshData meshData = GVK::shapes::generateUVSphere(2.0f, 32, 64);
 
-      GVK::Texture texture = GVK::createTexture(
-          state.device, state.physicalDevice, state.queue, state.commandPool,
-          GVK::loadImage("assets/textures/albedo.jpeg"));
+    GVK::Mesh mesh = GVK::createMesh(state.device, state.physicalDevice,
+                                     state.commandPool, state.queue, meshData);
 
-      std::vector<GVK::FrameState> frameStates = GVK::createFrameStates(
-          state, globalLayout,
-          GVK::createUniformBuffers<Matrices>(
-              state.device, state.physicalDevice, MAX_FRAMES_IN_FLIGHT),
-          texture);
+    GVK::Texture albedo = GVK::createTexture(
+        state.device, state.physicalDevice, state.queue, state.commandPool,
+        GVK::loadImage("assets/textures/albedo.jpeg"), "albedo");
 
-      mainLoop(state, frameStates, window, pipelineFamily, mesh, material);
-    
+    GVK::Texture defaultTexture = GVK::createTexture(
+        state.device, state.physicalDevice, state.queue, state.commandPool,
+        GVK::createDefaultImage({1.0f, 0.0f, 1.0f, 1.0f}), "default");
+
+    GVK::Texture normalTexture = GVK::createTexture(
+        state.device, state.physicalDevice, state.queue, state.commandPool,
+        GVK::createDefaultImage({0.5f, 0.5f, 1.0f, 1.0f}), "normal");
+
+    GVK::addTexture(state.textureManager, std::move(albedo));
+    GVK::addTexture(state.textureManager, std::move(defaultTexture));
+    GVK::addTexture(state.textureManager, std::move(normalTexture));
+
+    GVK::Material material =
+        GVK::createMaterial(state.device, state.materialSystem,
+                            {.baseColor = {1.0f, 1.0f, 1.0f, 1.0f},
+                             .metallic = 0.0f,
+                             .roughness = 1.0f},
+                            GVK::getTexture(state.textureManager, "default"),
+                            GVK::getTexture(state.textureManager, "normal"));
+
+    std::vector<GVK::FrameState> frameStates = GVK::createFrameStates(
+        state, globalLayout,
+        GVK::createUniformBuffers<Matrices>(state.device, state.physicalDevice,
+                                            MAX_FRAMES_IN_FLIGHT));
+
+    mainLoop(state, frameStates, window, pipelineFamily, mesh, material);
+
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
     return EXIT_FAILURE;

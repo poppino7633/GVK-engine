@@ -35,19 +35,19 @@ State::State(GLFWwindow *window,
                    descriptorPoolSizes.end());
   poolSizes.insert(poolSizes.begin() + descriptorPoolSizes.size(),
                    materialPoolSizes.begin(), materialPoolSizes.end());
-  descriptorPool = GVK::createDescriptorPool(device, poolSizes,
-                                             maxDescriptorCount);
+  descriptorPool =
+      GVK::createDescriptorPool(device, poolSizes, maxDescriptorCount);
 
   commandPool = GVK::createCommandPool(device, queueFamilyIndex);
 
-  materialSystem = createMaterialSystem(device, physicalDevice, descriptorPool, maxMaterials);
+  materialSystem = createMaterialSystem(device, physicalDevice, descriptorPool,
+                                        maxMaterials);
 }
 
 std::vector<FrameState>
 createFrameStates(const State &state,
                   const vk::raii::DescriptorSetLayout &descriptorSetLayout,
-                  std::vector<BufferMapped> uniformBuffers,
-                  const Texture &texture) {
+                  std::vector<BufferMapped> uniformBuffers) {
 
   const uint32_t count = uniformBuffers.size();
   auto commandBuffers =
@@ -58,20 +58,13 @@ createFrameStates(const State &state,
   for (size_t i = 0; i < descriptorSets.size(); i++) {
     vk::DescriptorBufferInfo bufferInfo = {*uniformBuffers[i].buffer, 0,
                                            uniformBuffers[i].bufferSize};
-    vk::DescriptorImageInfo imageInfo = getTextureImageInfo(texture);
-    std::array<vk::WriteDescriptorSet, 2> descriptorWrites{
+    std::array<vk::WriteDescriptorSet, 1> descriptorWrites{
         {{.dstSet = descriptorSets[i],
           .dstBinding = 0,
           .dstArrayElement = 0,
           .descriptorCount = 1,
           .descriptorType = vk::DescriptorType::eUniformBuffer,
-          .pBufferInfo = &bufferInfo},
-         {.dstSet = descriptorSets[i],
-          .dstBinding = 1,
-          .dstArrayElement = 0,
-          .descriptorCount = 1,
-          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
-          .pImageInfo = &imageInfo}}};
+          .pBufferInfo = &bufferInfo}}};
 
     state.device.updateDescriptorSets(descriptorWrites, {});
   }

@@ -3,12 +3,12 @@
 #include <GVKRender/command.hpp>
 #include <GVKRender/descriptor.hpp>
 #include <GVKRender/image.hpp>
+#include <GVKRender/material.hpp>
 #include <GVKRender/pipeline.hpp>
 #include <GVKRender/surface.hpp>
 #include <GVKRender/sync.hpp>
 #include <GVKRender/texture.hpp>
 #include <GVKRender/window.hpp>
-#include <GVKRender/material.hpp>
 #ifndef NDEBUG
 #include <GVKRender/debug.hpp>
 #endif
@@ -27,6 +27,7 @@ struct State {
   GVK::SwapChain swapChain;
   vk::raii::DescriptorPool descriptorPool = nullptr;
   vk::raii::CommandPool commandPool = nullptr;
+  TextureManager textureManager;
   MaterialSystem materialSystem;
 
   State(GLFWwindow *window, const std::vector<const char *> &validationLayers,
@@ -51,6 +52,5 @@ void recreateSwapChain(GVK::State &state, GLFWwindow *window);
 std::vector<FrameState>
 createFrameStates(const State &state,
                   const vk::raii::DescriptorSetLayout &descriptorSetLayout,
-                  std::vector<BufferMapped> uniformBuffers,
-                  const Texture &texture);
+                  std::vector<BufferMapped> uniformBuffers);
 } // namespace GVK

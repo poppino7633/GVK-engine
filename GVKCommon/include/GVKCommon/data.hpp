@@ -6,7 +6,6 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 
-
 namespace GVK {
 
 enum class PixelFormat { RGBA };
@@ -22,13 +21,13 @@ struct PixelData {
 struct Vertex {
   glm::vec3 position;
   glm::vec3 normal;
+  glm::vec4 tangent;
   glm::vec2 uv;
   bool operator==(const Vertex &other) const {
     return position == other.position && normal == other.normal &&
-           uv == other.uv;
+           tangent == other.tangent && uv == other.uv;
   }
 };
-
 
 struct MeshData {
   std::vector<Vertex> vertices;
@@ -47,4 +46,3 @@ template <> struct hash<GVK::Vertex> {
   }
 };
 } // namespace std
-

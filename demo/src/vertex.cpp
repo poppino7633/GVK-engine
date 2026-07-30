@@ -17,6 +17,10 @@ template <> VertexDescription getVertexDescription<Vertex>() {
             .offset = offsetof(Vertex, normal)},
            {.location = 2,
             .binding = 0,
+            .format = vk::Format::eR32G32B32A32Sfloat,
+            .offset = offsetof(Vertex, tangent)},
+           {.location = 3,
+            .binding = 0,
             .format = vk::Format::eR32G32Sfloat,
             .offset = offsetof(Vertex, uv)}}};
 }
