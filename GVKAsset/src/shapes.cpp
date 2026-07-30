@@ -15,15 +15,15 @@ MeshData generateUVSphere(float radius, uint32_t stacks, uint32_t slices) {
       float theta = u * glm::two_pi<float>();
 
       float x = radius * std::sin(phi) * std::cos(theta);
-      float y = radius * std::cos(phi);
-      float z = radius * std::sin(phi) * std::sin(theta);
+      float y = radius * std::sin(phi) * std::sin(theta);
+      float z = radius * std::cos(phi);
 
       Vertex vertex;
       vertex.position = {x, y, z};
       vertex.normal = glm::normalize(vertex.position);
       vertex.uv = {u, v};
       vertex.tangent = glm::vec4(
-          glm::normalize(glm::vec3(-std::sin(theta), 0.0f, std::cos(theta))),
+          glm::normalize(glm::vec3(-std::sin(theta), std::cos(theta), 0.0f)),
           1.0f);
       data.vertices.push_back(vertex);
     }

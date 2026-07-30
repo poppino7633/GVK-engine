@@ -90,7 +90,7 @@ void mainLoop(GVK::State &state, std::vector<GVK::FrameState> &frameStates,
                      currentTime - startTime)
                      .count();
     glm::mat4 model = glm::mat4(1.0f);
-    //model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 1.0f, 0.0f));
+    //model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
     //model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, time * glm::radians(90.0f),
                         glm::vec3(0.0f, 0.0f, 1.0f));

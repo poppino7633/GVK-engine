@@ -53,12 +53,9 @@ VSOutput vertMain(VSInput input) {
   float3 N = normalize(mul(pc.normal, float4(input.inNormal, 0)).xyz);
   T = normalize(T - dot(T, N) * N);
   float3 B = cross(N, T) * input.inTangent.w;
-  output.TBN = float3x3(
-    T.x, T.y, T.z,
-    B.x, B.y, B.z,
-    N.x, N.y, N.z
-);
-  output.n = N;
+  output.TBN = float3x3(T, B, N);
+  output.n = mul(output.TBN, input.inNormal);
+  output.tg = normalize(input.inTangent.xyz);
   output.tg = T;
 
   return output;
@@ -74,9 +71,8 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
   tangentNormal = tangentNormal * 2.0f - 1.0f;
 
   float3 worldNormal = normalize(mul(tangentNormal, vertIn.TBN));
-  worldNormal = vertIn.n;
 
-  float3 lightPos = float3(0.0, -2.0, 3.0);
+  float3 lightPos = float3(0.0, 2.0, 3.0);
   float3 lightDir = normalize(lightPos - vertIn.worldPos.xyz);
 
   float NdotL = max(dot(worldNormal, lightDir), 0.0);
@@ -87,8 +83,8 @@ float4 fragMain(VSOutput vertIn) : SV_TARGET {
   float3 diffuse = baseColor * NdotL;
   float3 color = ambient + diffuse;
 
-  //return float4((tangentNormal - float3(0, 0, 1)) * 0.5 + 0.5, 1);
-  //return float4(normalize(mul(vertIn.TBN, float3(0,0,1))) * 0.5 + 0.5, 1);  
-  //return float4(worldNormal * 0.5f + 0.5f, 1);
+  // return float4((tangentNormal - float3(0, 0, 1)) * 0.5 + 0.5, 1);
+  // return float4(normalize(mul(vertIn.TBN, float3(0,0,1))) * 0.5 + 0.5, 1);
+  // return float4(worldNormal * 0.5f + 0.5f, 1);
   return float4(color, 1.0);
 }
