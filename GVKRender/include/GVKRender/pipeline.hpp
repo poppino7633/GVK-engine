@@ -14,6 +14,10 @@ struct PushConstants {
   glm::mat4 normalMatrix;
 };
 
+struct PipelineConfig { 
+  vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
+};
+
 struct PipelineFamily {
   vk::raii::PipelineLayout pipelineLayout;
   std::vector<vk::raii::Pipeline> pipelines;
@@ -31,7 +35,7 @@ void addGraphicsPipeline(const vk::raii::Device &device,
                          PipelineFamily &pipelineFamily,
                          vk::raii::ShaderModule shaderModule,
                          const VertexDescription &vertexDescription,
-                         const SwapChain &swapChain);
+                         const SwapChain &swapChain, PipelineConfig config = {});
 
 PipelineFamily createPipelineFamily(
     const vk::raii::Device &device,

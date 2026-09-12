@@ -9,6 +9,7 @@ createShaderModule(const vk::raii::Device &device,
       .codeSize = code.size() * sizeof(char),
       .pCode = reinterpret_cast<const uint32_t *>(code.data())};
   return vk::raii::ShaderModule(device, createInfo);
+#include "vulkan/vulkan.hpp"
 }
 
 vk::raii::PipelineLayout createPipelineLayout(
@@ -34,7 +35,7 @@ createGraphicsPipeline(const vk::raii::Device &device,
                        vk::raii::ShaderModule shaderModule,
                        const VertexDescription &vertexDescription,
                        const vk::raii::PipelineLayout &pipelineLayout,
-                       const SwapChain &swapChain) {
+                       PipelineConfig config, const SwapChain &swapChain) {
 
   vk::PipelineShaderStageCreateInfo vertShaderStageInfo{
       .stage = vk::ShaderStageFlagBits::eVertex,
@@ -64,8 +65,8 @@ createGraphicsPipeline(const vk::raii::Device &device,
       .pVertexAttributeDescriptions =
           vertexDescription.attributeDescriptions.data()};
 
-  vk::PipelineInputAssemblyStateCreateInfo inputAssembly{
-      .topology = vk::PrimitiveTopology::eTriangleList};
+  vk::PipelineInputAssemblyStateCreateInfo inputAssembly{.topology =
+                                                             config.topology};
 
   vk::Viewport viewport{0.0f,
                         0.0f,
@@ -156,10 +157,11 @@ void addGraphicsPipeline(const vk::raii::Device &device,
                          PipelineFamily &pipelineFamily,
                          vk::raii::ShaderModule shaderModule,
                          const VertexDescription &vertexDescription,
-                         const SwapChain &swapChain) {
-  pipelineFamily.pipelines.emplace_back(std::move(
-      createGraphicsPipeline(device, std::move(shaderModule), vertexDescription,
-                             pipelineFamily.pipelineLayout, swapChain)));
+                         const SwapChain &swapChain,
+                         PipelineConfig config) {
+  pipelineFamily.pipelines.emplace_back(std::move(createGraphicsPipeline(
+      device, std::move(shaderModule), vertexDescription,
+      pipelineFamily.pipelineLayout, config, swapChain)));
 }
 PipelineHandle getPipelineHandle(const PipelineFamily &family, size_t index) {
   return {family.pipelineLayout, family.pipelines[index]};

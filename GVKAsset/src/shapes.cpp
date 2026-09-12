@@ -1,7 +1,7 @@
 #include <GVKAsset/shapes.hpp>
 
 namespace GVK::shapes {
-MeshData generateUVSphere(float radius, uint32_t stacks, uint32_t slices) {
+MeshData generateUVSphere(float radius, uint32_t stacks, uint32_t slices, glm::vec3 color) {
   assert(radius > 0.0f);
   assert(stacks >= 2);
   assert(slices >= 3);
@@ -25,6 +25,7 @@ MeshData generateUVSphere(float radius, uint32_t stacks, uint32_t slices) {
       vertex.tangent = glm::vec4(
           glm::normalize(glm::vec3(-std::sin(theta), std::cos(theta), 0.0f)),
           1.0f);
+      vertex.color = color;
       data.vertices.push_back(vertex);
     }
   }

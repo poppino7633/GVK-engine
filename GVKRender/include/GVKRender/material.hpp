@@ -30,10 +30,12 @@ struct Material {
   const vk::DeviceSize uboOffset;
 
   static std::vector<vk::DescriptorSetLayoutBinding> getBindings() {
-    return {MaterialConstants::getBinding(0), Texture::getBinding(1), Texture::getBinding(2)};
+    return {MaterialConstants::getBinding(0), Texture::getBinding(1),
+            Texture::getBinding(2), Texture::getBinding(3)};
   }
   static std::vector<vk::DescriptorPoolSize> getPoolSizes(uint32_t count) {
-    return {MaterialConstants::getPoolSize(count), Texture::getPoolSize(count), Texture::getPoolSize(count)};
+    return {MaterialConstants::getPoolSize(count), Texture::getPoolSize(count),
+            Texture::getPoolSize(count), Texture::getPoolSize(count)};
   }
 };
 
@@ -44,6 +46,7 @@ struct MaterialSystem {
   std::vector<vk::raii::DescriptorSet> descriptorSets;
   std::vector<std::shared_ptr<Texture>> baseColorTextures;
   std::vector<std::shared_ptr<Texture>> normalTextures;
+  std::vector<std::shared_ptr<Texture>> metallicRoughnessTextures;
   std::stack<size_t> freeIndices;
 };
 
@@ -57,6 +60,7 @@ Material createMaterial(const vk::raii::Device &device,
                         MaterialSystem &materialSystem,
                         MaterialConstants constants,
                         std::shared_ptr<Texture> baseColorTexture,
-                        std::shared_ptr<Texture> normalTexture);
+                        std::shared_ptr<Texture> normalTexture,
+                        std::shared_ptr<Texture> metallicRoughnessTexture);
 
 } // namespace GVK

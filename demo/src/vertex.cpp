@@ -22,7 +22,12 @@ template <> VertexDescription getVertexDescription<Vertex>() {
            {.location = 3,
             .binding = 0,
             .format = vk::Format::eR32G32Sfloat,
-            .offset = offsetof(Vertex, uv)}}};
+            .offset = offsetof(Vertex, uv)},
+           {.location = 4,
+            .binding = 0,
+            .format = vk::Format::eR32G32B32Sfloat,
+            .offset = offsetof(Vertex, color)},
+          }};
 }
 
 } // namespace GVK

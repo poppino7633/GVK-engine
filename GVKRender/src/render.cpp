@@ -36,7 +36,7 @@ void beginFrame(State &state, FrameState &frameState, const Window &window) {
       vk::ImageLayout::eUndefined, vk::ImageLayout::eDepthAttachmentOptimal,
       vk::ImageAspectFlagBits::eDepth);
 
-  vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
+  vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.05f, 0.05f, 1.0f);
   vk::ClearValue clearDepth = vk::ClearDepthStencilValue(1.0f, 0);
   vk::RenderingAttachmentInfo colorAttachmentInfo = {
       .imageView = swapChainImage.imageView,

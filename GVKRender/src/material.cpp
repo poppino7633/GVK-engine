@@ -1,3 +1,4 @@
+#include "GVKRender/texture.hpp"
 #include <GVKRender/material.hpp>
 
 size_t alignUp(size_t value, size_t alignment) {
@@ -26,7 +27,10 @@ createMaterialSystem(const vk::raii::Device &device,
       .descriptorSetLayout = std::move(descriptorSetLayout),
       .descriptorSets = std::move(descriptorSets),
       .baseColorTextures = std::vector<std::shared_ptr<Texture>>(materialCount),
-      .normalTextures = std::vector<std::shared_ptr<Texture>>(materialCount)};
+      .normalTextures = std::vector<std::shared_ptr<Texture>>(materialCount),
+      .metallicRoughnessTextures =
+          std::vector<std::shared_ptr<Texture>>(materialCount)};
+
   for (size_t i = 0; i < materialCount; i++) {
     ms.freeIndices.push(i);
   }
@@ -37,13 +41,15 @@ Material createMaterial(const vk::raii::Device &device,
                         MaterialSystem &materialSystem,
                         MaterialConstants constants,
                         std::shared_ptr<Texture> baseColorTexture,
-                        std::shared_ptr<Texture> normalTexture) {
+                        std::shared_ptr<Texture> normalTexture,
+                        std::shared_ptr<Texture> metallicRoughnessTexture) {
   assert(!materialSystem.freeIndices.empty());
 
   size_t index = materialSystem.freeIndices.top();
   materialSystem.freeIndices.pop();
   materialSystem.baseColorTextures[index] = baseColorTexture;
   materialSystem.normalTextures[index] = normalTexture;
+  materialSystem.metallicRoughnessTextures[index] = metallicRoughnessTexture;
 
   memcpy((char *)materialSystem.constantsUBO.ptr +
              index * materialSystem.materialStride,
@@ -54,10 +60,11 @@ Material createMaterial(const vk::raii::Device &device,
 
   vk::DescriptorImageInfo baseColorImageInfo =
       getTextureImageInfo(*baseColorTexture);
-  vk::DescriptorImageInfo normalImageInfo =
-      getTextureImageInfo(*normalTexture);
+  vk::DescriptorImageInfo normalImageInfo = getTextureImageInfo(*normalTexture);
+  vk::DescriptorImageInfo metallicRoughnessImageInfo =
+      getTextureImageInfo(*metallicRoughnessTexture);
 
-  std::array<vk::WriteDescriptorSet, 3> descriptorWrites{{
+  std::array<vk::WriteDescriptorSet, 4> descriptorWrites{{
       {.dstSet = *materialSystem.descriptorSets[index],
        .dstBinding = 0,
        .dstArrayElement = 0,
@@ -76,6 +83,12 @@ Material createMaterial(const vk::raii::Device &device,
        .descriptorCount = 1,
        .descriptorType = vk::DescriptorType::eCombinedImageSampler,
        .pImageInfo = &normalImageInfo},
+      {.dstSet = *materialSystem.descriptorSets[index],
+       .dstBinding = 3,
+       .dstArrayElement = 0,
+       .descriptorCount = 1,
+       .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+       .pImageInfo = &metallicRoughnessImageInfo},
   }};
   device.updateDescriptorSets(descriptorWrites, {});
   return {index, index * materialSystem.materialStride};

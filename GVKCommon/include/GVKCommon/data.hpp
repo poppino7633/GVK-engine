@@ -23,9 +23,10 @@ struct Vertex {
   glm::vec3 normal;
   glm::vec4 tangent;
   glm::vec2 uv;
+  glm::vec3 color;
   bool operator==(const Vertex &other) const {
     return position == other.position && normal == other.normal &&
-           tangent == other.tangent && uv == other.uv;
+           tangent == other.tangent && uv == other.uv && color == other.color;
   }
 };
 
