@@ -22,3 +22,5 @@ Hobby Vulkan renderer written in C++, with the Khronos Vulkan Tutorial as a refe
 ### Planned
 - [ ] glTF implementations
 - [ ] Indirect PBR Lighting (IBL)
+
+<img width="1134" height="610" alt="image" src="https://github.com/user-attachments/assets/033780d1-10b5-4fb3-b6be-5ed02070e6ec" />
