@@ -16,8 +16,9 @@ Hobby Vulkan renderer written in C++, with the Khronos Vulkan Tutorial as a refe
 - [x] Depth buffering
 - [x] OBJ model loading
 - [x] Basic engine modularization (`GVKCommon`, `GVKAsset`, `GVKRender`)
+- [x] Material system
+- [X] Direct PBR Lighting
 
 ### Planned
-- [ ] Support arbitrary models (e.g. glTF)
-- [ ] Material system
-- [ ] PBR lighting
+- [ ] glTF implementations
+- [ ] Indirect PBR Lighting (IBL)
