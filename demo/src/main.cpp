@@ -111,18 +111,11 @@ void mainLoop(GVK::State &state, std::vector<GVK::FrameState> &frameStates,
     model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
     glm::mat4 normalMatrix = glm::transpose(glm::inverse(model));
 
-<<<<<<< Updated upstream
-    GVK::DrawCommand<PushConstants> drawCommand1 = {
-        .drawable = &mesh, .pushConstants = {model, normalMatrix}};
 
-    GVK::bindMaterial(frameState, pipelineHandle.layout, state.materialSystem,
-                      materials[0]);
-=======
     GVK::bindMaterial(frameState, pipelineHandle.layout, state.materialSystem,
                       materials[0]);
 
     GVK::draw(frameState, mesh, pipelineHandle, {model, normalMatrix}, 1, 0);
->>>>>>> Stashed changes
 
     model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(-1.5f, 0.0f, 0.0f));
@@ -130,19 +123,10 @@ void mainLoop(GVK::State &state, std::vector<GVK::FrameState> &frameStates,
                         glm::vec3(0.0f, 0.0f, 1.0f));
     model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
     normalMatrix = glm::transpose(glm::inverse(model));
-<<<<<<< Updated upstream
-    GVK::DrawCommand<PushConstants> drawCommand2 = {
-        .drawable = &mesh, .pushConstants = {model, normalMatrix}};
-
-    GVK::bindMaterial(frameState, pipelineHandle.layout, state.materialSystem,
-                      materials[1]);
-    GVK::draw(frameState, {drawCommand1, drawCommand2}, pipelineHandle);
-=======
 
     GVK::bindMaterial(frameState, pipelineHandle.layout, state.materialSystem,
                       materials[1]);
     GVK::draw(frameState, mesh, pipelineHandle, {model, normalMatrix}, 1, 0);
->>>>>>> Stashed changes
 
     GVK::endFrame(state, frameState, window);
 
