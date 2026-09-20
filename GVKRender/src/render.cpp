@@ -59,6 +59,7 @@ void beginFrame(State &state, FrameState &frameState, const Window &window) {
       .pColorAttachments = &colorAttachmentInfo,
       .pDepthAttachment = &depthAttachmentInfo};
 
+  frameState.currentPipeline = nullptr;
   frameState.commandBuffer.beginRendering(renderingInfo);
   frameState.commandBuffer.setViewport(
       0, vk::Viewport(

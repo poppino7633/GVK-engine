@@ -41,6 +41,7 @@ struct FrameState {
   vk::raii::DescriptorSet descriptorSet;
   vk::raii::Semaphore presentCompleteSemaphore;
   vk::raii::Fence inFlightFence;
+  vk::Pipeline currentPipeline = {};
   BufferMapped ubo;
   unsigned int swapChainImageIndex;
   size_t currentPipelineIndex;
