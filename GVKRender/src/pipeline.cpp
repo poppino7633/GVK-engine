@@ -1,4 +1,3 @@
-#include "vulkan/vulkan.hpp"
 #include <GVKRender/pipeline.hpp>
 
 namespace GVK {
@@ -14,12 +13,12 @@ createShaderModule(const vk::raii::Device &device,
 
 vk::raii::PipelineLayout createPipelineLayout(
     const vk::raii::Device &device,
-    const std::vector<vk::DescriptorSetLayout> &descriptorSetLayouts) {
+    const std::vector<vk::DescriptorSetLayout> &descriptorSetLayouts, uint32_t pushConstantSize) {
 
   vk::PushConstantRange pushConstantRange = {
       .stageFlags = vk::ShaderStageFlagBits::eAllGraphics,
       .offset = 0,
-      .size = sizeof(PushConstants)};
+      .size = pushConstantSize};
 
   vk::PipelineLayoutCreateInfo pipelineLayoutInfo{
       .setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size()),
@@ -143,28 +142,5 @@ createGraphicsPipeline(const vk::raii::Device &device,
       pipelineCreateInfoChain.get<vk::GraphicsPipelineCreateInfo>());
 }
 
-PipelineFamily createPipelineFamily(
-    const vk::raii::Device &device,
-    const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts) {
-
-  vk::raii::PipelineLayout pipelineLayout =
-      createPipelineLayout(device, descriptorSetLayouts);
-
-  return {.pipelineLayout = std::move(pipelineLayout), .pipelines = {}};
-}
-
-void addGraphicsPipeline(const vk::raii::Device &device,
-                         PipelineFamily &pipelineFamily,
-                         vk::raii::ShaderModule shaderModule,
-                         const VertexDescription &vertexDescription,
-                         const SwapChain &swapChain,
-                         PipelineConfig config) {
-  pipelineFamily.pipelines.emplace_back(std::move(createGraphicsPipeline(
-      device, std::move(shaderModule), vertexDescription,
-      pipelineFamily.pipelineLayout, config, swapChain)));
-}
-PipelineHandle getPipelineHandle(const PipelineFamily &family, size_t index) {
-  return {family.pipelineLayout, family.pipelines[index]};
-}
 
 } // namespace GVK

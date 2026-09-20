@@ -9,20 +9,16 @@ struct VertexDescription {
   std::vector<vk::VertexInputAttributeDescription> attributeDescriptions;
 };
 
-struct PushConstants {
-  glm::mat4 modelMatrix;
-  glm::mat4 normalMatrix;
-};
-
-struct PipelineConfig { 
+struct PipelineConfig {
   vk::PrimitiveTopology topology = vk::PrimitiveTopology::eTriangleList;
 };
 
-struct PipelineFamily {
+template <typename PC> struct PipelineFamily {
   vk::raii::PipelineLayout pipelineLayout;
   std::vector<vk::raii::Pipeline> pipelines;
 };
 
+template<typename PC>
 struct PipelineHandle {
   const vk::raii::PipelineLayout &layout;
   const vk::raii::Pipeline &pipeline;
@@ -31,16 +27,47 @@ struct PipelineHandle {
 vk::raii::ShaderModule createShaderModule(const vk::raii::Device &device,
                                           const std::vector<char> &code);
 
+
+vk::raii::Pipeline
+createGraphicsPipeline(const vk::raii::Device &device,
+                       vk::raii::ShaderModule shaderModule,
+                       const VertexDescription &vertexDescription,
+                       const vk::raii::PipelineLayout &pipelineLayout,
+                       PipelineConfig config, const SwapChain &swapChain);
+
+
+template <typename PC>
 void addGraphicsPipeline(const vk::raii::Device &device,
-                         PipelineFamily &pipelineFamily,
+                         PipelineFamily<PC> &pipelineFamily,
                          vk::raii::ShaderModule shaderModule,
                          const VertexDescription &vertexDescription,
-                         const SwapChain &swapChain, PipelineConfig config = {});
+                         const SwapChain &swapChain,
+                         PipelineConfig config = {}) {
+  pipelineFamily.pipelines.emplace_back(std::move(createGraphicsPipeline(
+      device, std::move(shaderModule), vertexDescription,
+      pipelineFamily.pipelineLayout, config, swapChain)));
+}
 
-PipelineFamily createPipelineFamily(
+vk::raii::PipelineLayout createPipelineLayout(
     const vk::raii::Device &device,
-    const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts);
+    const std::vector<vk::DescriptorSetLayout> &descriptorSetLayouts,
+    uint32_t pushConstantSize);
 
-PipelineHandle getPipelineHandle(const PipelineFamily &family, size_t index);
+template <typename PC>
+PipelineFamily<PC> createPipelineFamily(
+    const vk::raii::Device &device,
+    const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts) {
+  vk::raii::PipelineLayout pipelineLayout =
+      createPipelineLayout(device, descriptorSetLayouts, sizeof(PC));
+
+  return {.pipelineLayout = std::move(pipelineLayout), .pipelines = {}};
+}
+
+template <typename PC>
+PipelineHandle<PC> getPipelineHandle(const PipelineFamily<PC> &family,
+                                 size_t index) {
+
+  return {family.pipelineLayout, family.pipelines[index]};
+}
 
 } // namespace GVK

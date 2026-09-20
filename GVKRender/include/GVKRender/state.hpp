@@ -43,7 +43,6 @@ struct FrameState {
   vk::raii::Fence inFlightFence;
   BufferMapped ubo;
   unsigned int swapChainImageIndex;
-  std::shared_ptr<PipelineFamily> currentPipelineFamily;
   size_t currentPipelineIndex;
 };
 

@@ -1,7 +1,7 @@
 #include <GVKRender/mesh.hpp>
 
 namespace GVK {
-Mesh createMesh(const vk::raii::Device &device,
+Drawable createDrawable(const vk::raii::Device &device,
                 const vk::raii::PhysicalDevice &physicalDevice,
                 const vk::raii::CommandPool &commandPool,
                 const vk::raii::Queue &queue, const MeshData &data) {

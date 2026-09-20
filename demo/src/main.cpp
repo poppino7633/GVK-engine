@@ -1,4 +1,3 @@
-#include "GVKRender/texture.hpp"
 #include <GVKAsset/image.hpp>
 #include <GVKAsset/model.hpp>
 #include <GVKAsset/shapes.hpp>
@@ -37,6 +36,11 @@ struct UBOData {
   }
 };
 
+struct PushConstants {
+  glm::mat4 modelMatrix;
+  glm::mat4 normalMatrix;
+};
+
 std::vector<char> readFile(const std::string &filename) {
   std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
@@ -52,7 +56,8 @@ std::vector<char> readFile(const std::string &filename) {
   return buffer;
 }
 
-void updateMatricesUBO(glm::vec3 viewPos, glm::vec3 lightPos, GVK::BufferMapped &matricesBuffer,
+void updateMatricesUBO(glm::vec3 viewPos, glm::vec3 lightPos,
+                       GVK::BufferMapped &matricesBuffer,
                        vk::Extent2D swapChainExtent) {
   UBOData ubo{};
   ubo.view = glm::lookAt(viewPos, glm::vec3(0.0f, 0.0f, 0.0f),
@@ -68,8 +73,9 @@ void updateMatricesUBO(glm::vec3 viewPos, glm::vec3 lightPos, GVK::BufferMapped 
 }
 
 void mainLoop(GVK::State &state, std::vector<GVK::FrameState> &frameStates,
-              GVK::Window &window, const GVK::PipelineFamily &pipelineFamily,
-              const GVK::Mesh &mesh, std::vector<GVK::Material> materials) {
+              GVK::Window &window,
+              const GVK::PipelineFamily<PushConstants> &pipelineFamily,
+              const GVK::Drawable &mesh, std::vector<GVK::Material> materials) {
   std::cout << "Starting main loop" << std::endl;
   uint32_t frameIndex = 0;
   while (!glfwWindowShouldClose(window.handle)) {
@@ -77,7 +83,8 @@ void mainLoop(GVK::State &state, std::vector<GVK::FrameState> &frameStates,
     GVK::FrameState &frameState = frameStates[frameIndex];
     glm::vec3 viewPos(0.0f, 4.0f, 0.0f);
     glm::vec3 lightPos(0.0f, 6.0f, 2.0f);
-    updateMatricesUBO(viewPos, lightPos, frameState.ubo, state.swapChain.extent);
+    updateMatricesUBO(viewPos, lightPos, frameState.ubo,
+                      state.swapChain.extent);
     GVK::beginFrame(state, frameState, window);
     frameState.commandBuffer.bindDescriptorSets(
         vk::PipelineBindPoint::eGraphics, pipelineFamily.pipelineLayout, 0,
@@ -97,17 +104,18 @@ void mainLoop(GVK::State &state, std::vector<GVK::FrameState> &frameStates,
                      currentTime - startTime)
                      .count();
     glm::mat4 model = glm::mat4(1.0f);
-    // model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f,
-    // 0.0f)); model = glm::rotate(model, glm::radians(90.0f),
-    // glm::vec3(0.0f, 1.0f, 0.0f));
+
     model = glm::translate(model, glm::vec3(1.5f, 0.0f, 0.0f));
     model = glm::rotate(model, time * glm::radians(90.0f) * 0.1f,
                         glm::vec3(0.0f, 0.0f, 1.0f));
     model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
     glm::mat4 normalMatrix = glm::transpose(glm::inverse(model));
-    GVK::bindMaterial(frameState, pipelineHandle, state.materialSystem,
+
+    GVK::DrawCommand<PushConstants> drawCommand1 = {
+        .drawable = &mesh, .pushConstants = {model, normalMatrix}};
+
+    GVK::bindMaterial(frameState, pipelineHandle.layout, state.materialSystem,
                       materials[0]);
-    GVK::drawMesh(frameState, mesh, pipelineHandle, {model, normalMatrix});
 
     model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(-1.5f, 0.0f, 0.0f));
@@ -115,10 +123,12 @@ void mainLoop(GVK::State &state, std::vector<GVK::FrameState> &frameStates,
                         glm::vec3(0.0f, 0.0f, 1.0f));
     model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
     normalMatrix = glm::transpose(glm::inverse(model));
-    GVK::bindMaterial(frameState, pipelineHandle, state.materialSystem,
-                      materials[1]);
-    GVK::drawMesh(frameState, mesh, pipelineHandle, {model, normalMatrix});
+    GVK::DrawCommand<PushConstants> drawCommand2 = {
+        .drawable = &mesh, .pushConstants = {model, normalMatrix}};
 
+    GVK::bindMaterial(frameState, pipelineHandle.layout, state.materialSystem,
+                      materials[1]);
+    GVK::draw(frameState, {drawCommand1, drawCommand2}, pipelineHandle);
 
     GVK::endFrame(state, frameState, window);
 
@@ -149,9 +159,10 @@ int main() {
     vk::raii::DescriptorSetLayout globalLayout =
         GVK::createDescriptorSetLayout(state.device, globalBindings);
 
-    GVK::PipelineFamily pipelineFamily = GVK::createPipelineFamily(
-        state.device,
-        {*globalLayout, *state.materialSystem.descriptorSetLayout});
+    GVK::PipelineFamily<PushConstants> pipelineFamily =
+        GVK::createPipelineFamily<PushConstants>(
+            state.device,
+            {*globalLayout, *state.materialSystem.descriptorSetLayout});
 
     GVK::addGraphicsPipeline(
         state.device, pipelineFamily,
@@ -166,8 +177,9 @@ int main() {
     GVK::MeshData meshData =
         GVK::shapes::generateUVSphere(2.0f, 16, 32, {1.0f, 1.0f, 1.0f});
 
-    GVK::Mesh mesh = GVK::createMesh(state.device, state.physicalDevice,
-                                     state.commandPool, state.queue, meshData);
+    GVK::Drawable sphere =
+        GVK::createDrawable(state.device, state.physicalDevice,
+                            state.commandPool, state.queue, meshData);
 
     GVK::Texture albedo = GVK::createTexture(
         state.device, state.physicalDevice, state.queue, state.commandPool,
@@ -208,7 +220,8 @@ int main() {
         GVK::createUniformBuffers<UBOData>(state.device, state.physicalDevice,
                                            MAX_FRAMES_IN_FLIGHT));
 
-    mainLoop(state, frameStates, window, pipelineFamily, mesh, {metallicMaterial, dielectricMaterial});
+    mainLoop(state, frameStates, window, pipelineFamily, sphere,
+             {metallicMaterial, dielectricMaterial});
 
   } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;

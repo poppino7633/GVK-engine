@@ -68,11 +68,6 @@ void beginFrame(State &state, FrameState &frameState, const Window &window) {
       0, vk::Rect2D(vk::Offset2D(0, 0), state.swapChain.extent));
 }
 
-void bindPipeline(const FrameState &frameState,
-                  const PipelineHandle &pipeline) {
-  frameState.commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-                                        pipeline.pipeline);
-}
 
 void endFrame(State &state, FrameState &frameState, Window &window) {
 
@@ -119,24 +114,13 @@ void endFrame(State &state, FrameState &frameState, Window &window) {
   }
 }
 
-void drawMesh(const GVK::FrameState &frameState, const Mesh &mesh,
-              const PipelineHandle &pipeline,
-              const PushConstants &pushConstants) {
-  frameState.commandBuffer.bindVertexBuffers(0, *mesh.vertexBuffer, {0});
-  frameState.commandBuffer.bindIndexBuffer(*mesh.indexBuffer, 0,
-                                           vk::IndexType::eUint32);
-  frameState.commandBuffer.pushConstants(
-      pipeline.layout, vk::ShaderStageFlagBits::eAllGraphics, 0,
-      sizeof(PushConstants), &pushConstants);
-  frameState.commandBuffer.drawIndexed(mesh.indexCount, 1, 0, 0, 0);
-}
 
 void bindMaterial(const GVK::FrameState &frameState,
-                  const PipelineHandle &pipeline,
+                  const vk::raii::PipelineLayout &pipelineLayout,
                   const MaterialSystem &materialSystem,
                   const Material &material) {
   frameState.commandBuffer.bindDescriptorSets(
-      vk::PipelineBindPoint::eGraphics, pipeline.layout, 1,
+      vk::PipelineBindPoint::eGraphics, pipelineLayout, 1,
       *materialSystem.descriptorSets[material.descriptorSetIndex], {});
 }
 
